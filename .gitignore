@@ -19,3 +19,6 @@ config/dwl/*-protocol.h
 *.swp
 *~
 .claude/plans/
+
+# Hyprland override per-mesin (monitor/skala) — dibuat otomatis oleh `make link`
+config/hypr/local.conf

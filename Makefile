@@ -1,4 +1,4 @@
-# Dotfiles — symlink manager (labwc setup)
+# Dotfiles — symlink manager (labwc / dwl / Hyprland)
 # Symlink config/<app> -> ~/.config/<app>. Repo = sumber kebenaran.
 # Edit file di repo, perubahan langsung kepakai (via symlink), tanpa salin ulang.
 
@@ -8,7 +8,7 @@ DOTFILES := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 CONFIG   := $(HOME)/.config
 
 # Dir di config/ yang di-symlink utuh ke ~/.config/
-DIRS := foot fuzzel labwc sfwbar waypaper xremap
+DIRS := foot fuzzel hypr labwc sfwbar waypaper xremap
 
 # Tema labwc (Openbox-style) — di-symlink ke ~/.local/share/themes/
 THEMES_SRC := $(DOTFILES)/config/labwc/themes
@@ -24,6 +24,17 @@ help:
 	@echo "make status   tampilkan status tiap symlink"
 
 link:
+	@# Hyprland `source = ~/.config/hypr/local.conf` error kalau file tak ada.
+	@# Bikin kosong (sekali) — isinya override per-mesin, tak di-track git.
+	@[ -f "$(DOTFILES)/config/hypr/local.conf" ] || { \
+	  printf '%s\n' \
+	    '# Override per-mesin — TIDAK di-track git.' \
+	    '# Tulis `monitor = ...` di sini untuk multi-monitor / skala khusus.' \
+	    '# Contoh:' \
+	    '#   monitor = eDP-1,   1920x1080@60, 0x0,    1' \
+	    '#   monitor = HDMI-A-1,1920x1080@60, 1920x0, 1' \
+	    > "$(DOTFILES)/config/hypr/local.conf"; \
+	  echo "create  config/hypr/local.conf (override per-mesin)"; }
 	@for d in $(DIRS); do \
 	  src="$(DOTFILES)/config/$$d"; dst="$(CONFIG)/$$d"; \
 	  if [ -e "$$dst" ] && [ ! -L "$$dst" ]; then \

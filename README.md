@@ -1,11 +1,12 @@
-# macOS-style Wayland dotfiles — labwc + dwl (Fedora 42)
+# macOS-style Wayland dotfiles — labwc + dwl + Hyprland (Fedora 42)
 
 ![Desktop preview](assets/preview.png)
 
-Two wlroots compositors side by side, sharing one macOS-like keyboard layer:
+Three wlroots-based compositors side by side, sharing one macOS-like keyboard layer:
 
 - **labwc** — stacking/floating WM (manual window snapping).
 - **dwl** — tiling WM (dwm-style, compiled from source).
+- **Hyprland** — tiling WM with effects (animations, blur, gestures; runtime reload).
 
 `Super` is the physical **Cmd** key. `xremap` remaps app-shortcut letters
 (`Super+c/v/x/s/z/…`) to their `Ctrl+` equivalents so GUI apps feel mac-like,
@@ -28,12 +29,13 @@ config/
   dwl/config.h         # dwl keybinds/appearance (compiled in)
   dwl/autostart.sh     # dwl startup (dwl -s ...)
   dwl/dwl.desktop      # SDDM session entry
+  hypr/hyprland.conf   # Hyprland: keybinds + env + autostart + effects (one file)
   foot/foot.ini        # terminal font/theme
   fuzzel/fuzzel.ini    # launcher look
   sfwbar/sfwbar.config # top menu-bar (launcher + taskbar + clock + status)
   waypaper/            # wallpaper picker (config.ini is git-ignored = state)
-Makefile               # symlink manager (labwc setup)
-KEYMAP.md              # full keybind reference
+Makefile               # symlink manager (config/* -> ~/.config/*)
+KEYMAP.md              # full keybind reference (labwc + dwl + Hyprland)
 CLAUDE.md              # deploy/architecture notes
 ```
 
@@ -42,6 +44,9 @@ CLAUDE.md              # deploy/architecture notes
 ```bash
 # base — all in Fedora repos
 sudo dnf install labwc fuzzel foot grim slurp swaybg wl-clipboard sfwbar waypaper
+
+# Hyprland session (optional — see step 6)
+sudo dnf install hyprland xdg-desktop-portal-hyprland brightnessctl
 
 # xremap — NOT in repos. COPR (preferred):
 sudo dnf copr enable emd/xremap        # verify slug: `dnf copr search xremap`
@@ -142,6 +147,85 @@ session menu.
 > Note: dwl uses **tags** (not workspaces), so sfwbar's workspace pager won't
 > track them; the taskbar (foreign-toplevel) still works. Native dwl bar = dwlb.
 
+## 6. Hyprland — install & verify (optional, tiling + effects)
+
+Same keymap as labwc where it makes sense, but tiling, and using Hyprland's own
+features: dwindle auto-tiling, animations, blur/shadow/gradient borders,
+3-finger workspace swipe, special workspace (stands in for minimize).
+Everything lives in one file — **`config/hypr/hyprland.conf`** — and Hyprland
+**reloads on save**: no recompile (unlike dwl), no `--reconfigure` (unlike labwc).
+
+```bash
+sudo dnf install hyprland xdg-desktop-portal-hyprland brightnessctl
+make link          # symlinks config/hypr -> ~/.config/hypr
+```
+
+The SDDM session entry ships with the package (`/usr/share/wayland-sessions/hyprland.desktop`),
+so there is nothing to copy. Log out → pick **Hyprland**.
+
+### Your monitors
+
+Nothing is hardcoded: `monitor = , preferred, auto, 1` is a catch-all that matches
+any output (`eDP-1`, `HDMI-A-1`, `DP-1`, …), and the persistent workspaces 1–4 carry
+no `monitor:` field, so they follow whatever display you have.
+
+Multi-monitor or a specific mode/scale? Don't edit `hyprland.conf` — put your lines in
+**`~/.config/hypr/local.conf`**, which `make link` creates and `hyprland.conf` sources
+last. It is gitignored, so your layout never conflicts on `git pull`:
+
+```conf
+monitor = eDP-1,    1920x1080@60, 0x0,    1
+monitor = HDMI-A-1, 2560x1440@144, 1920x0, 1
+```
+
+`hyprctl monitors` lists the names your machine reports. `hyprctl reload` applies.
+
+Verify:
+1. `pgrep xremap` — running (the `xremap-wlroots` build works here: Hyprland
+   implements `wlr-foreign-toplevel-management`, so the per-app `foot` rule still fires).
+2. **Super+Space** fuzzel; **Super+Q** close; **Super+1..4** workspaces;
+   **Super+Left/Right** move focus; **Super+M** minimize → **Super+Shift+M** brings it back.
+3. Three-finger swipe on the touchpad switches workspaces.
+4. **Super+Shift+4** region screenshot → `~/Pictures`.
+
+> Notes: the workspace pager in the bar is **not** sfwbar's `pager` widget — see
+> [The workspace pager](#the-workspace-pager) below for why. Chromium-based
+> browsers are forced onto native Wayland via `ELECTRON_OZONE_PLATFORM_HINT`,
+> which also fixes the XWayland "address bar not clickable" bug.
+
+## The workspace pager
+
+The four workspace glyphs in the bar are **not** sfwbar's `pager` widget. That
+widget only speaks sway IPC and Hyprland, and its Hyprland backend reads state
+once at startup and then stops following focus events — measured on sfwbar
+1.0~beta16.1: a window on workspace 3, workspace 3 focused, highlight still stuck
+on 2. sfwbar's own man page says *"Placer and pager require sway"*. labwc has no
+sway IPC at all, so the pager never worked there either — the glyphs were
+decoration and clicks did nothing.
+
+Replacement: `config/sfwbar/wsctl`, a dependency-free python3 helper, plus four
+plain `label` widgets in `sfwbar.config`.
+
+```
+wsctl watch    emits {"ws": N} whenever the focused workspace changes
+wsctl set N    switch to workspace N
+wsctl mark N   record N as active without switching (labwc path)
+```
+
+| WM | read (highlight) | write (click) |
+|---|---|---|
+| Hyprland | `.socket2.sock` event stream | `hyprctl dispatch workspace N` |
+| labwc | state file, written by `set` / `mark` | `wtype` synthesises Super+N |
+| dwl | not supported (tags, not workspaces) | not supported |
+
+labwc extras: `sudo dnf install wtype`, and every `GoToDesktop` in `rc.xml` is
+paired with `Execute ~/.config/sfwbar/wsctl mark N` so keyboard switches also
+update the bar. Keep the pairs in sync or the highlight drifts.
+
+Changing the glyphs means editing three files: `labwc/rc.xml`
+(`<desktops><names>`), `hypr/hyprland.conf` (`defaultName:`), and
+`sfwbar/sfwbar.config` (the label `value`s).
+
 ## Theming (labwc window decorations)
 
 labwc uses Openbox-style themes (`themerc`). This repo ships **CatppuccinFrappe**
@@ -157,9 +241,13 @@ labwc uses Openbox-style themes (`themerc`). This repo ships **CatppuccinFrappe*
 ## Known tradeoffs (by design, not bugs)
 
 - **Cmd+arrow text-nav dropped** — arrows drive window snap (labwc) / master size
-  (dwl). Native Home/End still work.
+  (dwl) / focus movement (Hyprland). Native Home/End still work.
 - **Cmd+1..9 browser tabs dropped** — digits switch workspaces/tags. Use Ctrl+Tab.
-- **No Mission Control / Exposé** — neither WM has native window-overview.
+- **No Mission Control / Exposé** — none of the three ships a native window
+  overview. Closest: Hyprland's 3-finger workspace swipe, or the `hyprexpo`
+  plugin (needs `hyprpm` + build headers, not wired up here).
 - **Cmd+W** = app close-tab (`Ctrl+W`); window close = **Cmd+Q**.
 - **dwl screenshots use `Print`** (not `Super+Shift+3/4`) — the latter collides
-  with move-to-tag.
+  with move-to-tag. labwc and Hyprland keep the full mac set.
+- **No minimize on Hyprland** — the compositor has no iconify; `Super+M/H` parks
+  the window on the `special:minimized` workspace instead.

@@ -1,14 +1,15 @@
-# KEYMAP — macOS-style (labwc / dwl)
+# KEYMAP — macOS-style (labwc / dwl / Hyprland)
 
 *🇬🇧 [English version](KEYMAP.en.md)*
 
 `Super` = tombol fisik **Cmd**.
 
-Dua compositor terpasang berdampingan, pilih saat login (SDDM):
+Tiga compositor terpasang berdampingan, pilih saat login (SDDM):
 - **labwc** (`config/labwc/rc.xml`) — stacking/floating. Snap manual. Reload runtime.
 - **dwl** (`config/dwl/config.h`) — tiling (dwm-style). Compiled. Recompile tiap ubah.
+- **Hyprland** (`config/hypr/hyprland.conf`) — tiling + efek. Auto-reload saat file disimpan.
 
-Lapisan **xremap** (`config/xremap/config.yml`) di-**share** dua-duanya — remap huruf
+Lapisan **xremap** (`config/xremap/config.yml`) di-**share** ketiganya — remap huruf
 shortcut aplikasi `Super+` menjadi `Ctrl+` supaya GUI app terasa mac-like.
 
 Aturan: huruf yang di-remap xremap **tidak** sampai ke compositor. Tombol yang TIDAK
@@ -132,11 +133,83 @@ Screenshot & media key dwl = **sama** dgn labwc (lihat atas): `Print` (+Ctrl/Shi
 
 ---
 
-# === Shared (labwc + dwl) ===
+# === Hyprland (tiling + efek) ===
+
+Tiling `dwindle`. Keymap labwc dipertahankan sejauh masuk akal; yang berubah cuma
+yang tak punya arti di tiling (snap) atau tak ada di Hyprland (minimize).
+Semua di satu file `config/hypr/hyprland.conf`, **auto-reload saat disimpan**.
+
+## Window management (Hyprland)
+
+| Shortcut | Aksi |
+|---|---|
+| `Super+Space` / `Alt+Space` | Buka fuzzel (launcher) |
+| `Super+Return` | Buka foot (terminal) |
+| `Super+Q` | Close window (killactive) |
+| `Super+Shift+Q` | Keluar Hyprland |
+| `Super+Up` | Maximize (fullscreen 1 — bar tetap terlihat) |
+| `Super+Shift+Up` | Fullscreen sejati (fullscreen 0) |
+| `Super+Down` | Toggle floating |
+| `Super+Left` / `Super+Right` | Pindah fokus kiri / kanan |
+| `Super+Tab` / `Alt+Tab` / `Super+` `` ` `` | Window berikutnya (cyclenext) |
+| `Super+Shift+Tab` / `Alt+Shift+Tab` | Window sebelumnya |
+| `Super+M` / `Super+H` | "Minimize" → parkir ke workspace `special:minimized` |
+| `Super+Shift+M` | Tampilkan/sembunyikan workspace `special:minimized` |
+| `Super+Shift+Left/Right/Down` | Pindah posisi window dalam tiling |
+| `Super+Alt+panah` | Resize window aktif (60px / 40px per tekan) |
+| `Super+.` (period) | Toggle arah split (dwindle) |
+| `Super+/` (slash) | Toggle pseudotile |
+
+> Hyprland tak punya iconify. `special:minimized` = workspace khusus yang
+> disembunyikan — fungsinya sama seperti minimize, window tetap hidup.
+
+## Workspaces (Hyprland — 4 desktop, mac Spaces)
+
+| Shortcut | Aksi |
+|---|---|
+| `Super+1..4` | Pindah ke workspace 1–4 |
+| `Super+Shift+1..4` | Pindah window ke workspace 1–4 |
+| `Ctrl+Super+Left` / `Ctrl+Super+Right` | Kirim window ke workspace tetangga |
+| `Ctrl+Alt+Left` / `Ctrl+Alt+Right` | Pindah workspace tanpa bawa window |
+| `Super+scroll` | Ganti workspace (skip yang kosong) |
+| **Swipe 3 jari** | Ganti workspace (gesture trackpad, arah natural ala mac) |
+
+## Multi-monitor (Hyprland)
+
+| Shortcut | Aksi |
+|---|---|
+| `Super+[` / `Super+]` | Fokus monitor sebelumnya / berikutnya |
+| `Super+Shift+[` / `Super+Shift+]` | Pindahkan workspace aktif ke monitor lain |
+
+## Mouse (Hyprland)
+
+| Aksi | Fungsi |
+|---|---|
+| `Super+drag kiri` | Pindah window |
+| `Super+drag kanan` | Resize window |
+| `Super+klik tengah` | Toggle floating |
+| drag tepi window | Resize (`resize_on_border`, tanpa modifier) |
+
+Screenshot & media key Hyprland = **sama persis** dgn labwc (lihat atas):
+`Super+Shift+3/4`, `+Ctrl` ke clipboard, `Print` family, `XF86Audio*`.
+Brightness (`XF86MonBrightness*`) tersedia tapi **dikomentari** — aktifkan setelah
+`sudo dnf install brightnessctl`.
+
+## Fitur Hyprland yang dipakai
+
+dwindle auto-tile · animasi bezier ala macOS · blur + shadow + `rounding 8`
+(sinkron `cornerRadius` labwc) · gradient border Catppuccin Frappé (surface2 → teal)
+· `workspace_swipe` 3 jari · `special:minimized` · `layerrule blur` untuk
+sfwbar/fuzzel · `resize_on_border` · `follow_mouse=0` (click-to-focus, sama labwc)
+· `ELECTRON_OZONE_PLATFORM_HINT=auto` (Chromium/Electron native Wayland).
+
+---
+
+# === Shared (labwc + dwl + Hyprland) ===
 
 ## App shortcuts (xremap: Super → Ctrl)
 
-Berlaku global di semua GUI app, di **kedua** compositor. `Super+<huruf>` dikirim ke app sebagai `Ctrl+<huruf>`.
+Berlaku global di semua GUI app, di **ketiga** compositor. `Super+<huruf>` dikirim ke app sebagai `Ctrl+<huruf>`.
 
 | Super | Jadi | Fungsi umum |
 |---|---|---|
@@ -188,10 +261,14 @@ Blok khusus foot menang atas global. Bikin `Ctrl+C` asli tetap = SIGINT.
 
 ## Tradeoff (disengaja, bukan bug)
 
-- **Cmd+panah (navigasi teks) dihilangkan** — panah dipakai snap window. Home/End native tetap jalan.
-- **Cmd+1..9 (tab browser) dihilangkan** — digit untuk ganti workspace. Pakai `Ctrl+Tab`.
-- **Tidak ada Mission Control / Exposé** — labwc tak punya window-overview native.
+- **Cmd+panah (navigasi teks) dihilangkan** — panah dipakai snap window (labwc) /
+  mfact (dwl) / pindah fokus (Hyprland). Home/End native tetap jalan.
+- **Cmd+1..9 (tab browser) dihilangkan** — digit untuk ganti workspace/tag. Pakai `Ctrl+Tab`.
+- **Tidak ada Mission Control / Exposé** — tak satu pun dari ketiganya punya
+  window-overview native. Paling dekat: swipe 3 jari Hyprland, atau plugin
+  `hyprexpo` (butuh `hyprpm` + header build, belum dipasang di repo ini).
 - **Cmd+W** = close tab; tutup window = **Cmd+Q**.
+- **Minimize di Hyprland bukan iconify** — window diparkir ke `special:minimized`.
 
 ---
 
@@ -201,6 +278,12 @@ Sumber kebenaran = file di `config/`:
 - labwc window/sistem: `config/labwc/rc.xml` → salin ke `~/.config/` → `labwc --reconfigure`
 - dwl window/sistem: `config/dwl/config.h` → salin ke `~/Dokumen/dwl/` → **recompile**
   (`make CC=clang && sudo make install`) → logout/login. Tak ada reload runtime.
+- Hyprland window/sistem: `config/hypr/hyprland.conf` → **auto-reload saat disimpan**
+  (kalau sudah `make link`, tak perlu salin apa pun). Paksa reload: `hyprctl reload`.
 - App remap (shared): `config/xremap/config.yml` → restart xremap
+
+> Sebelum menambah keybind compositor: cek dulu tombolnya tidak dimakan xremap.
+> Sisa yang aman = `q m h space Return Tab grave panah 0-9 period slash [ ] Print`
+> + semua kombinasi `Ctrl+Super+*` / `Alt+Super+*` (xremap exact-match).
 
 Abis edit, salin ulang ke lokasi pakai lalu reload/recompile.

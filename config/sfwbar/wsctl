@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""wsctl — baca & ganti workspace aktif, lintas compositor.
+
+KENAPA ADA: widget `pager` bawaan sfwbar cuma punya backend sway IPC + Hyprland,
+dan backend Hyprland-nya baca state sekali saat start lalu berhenti menyimak
+event fokus (diuji di sfwbar 1.0~beta16: window pindah ke workspace 3, workspace
+aktif 3, highlight tetap di 2). Man sfwbar juga bilang eksplisit "Placer and
+pager require sway". labwc TIDAK punya sway IPC sama sekali, jadi pager di labwc
+belum pernah jalan — glyph-nya murni hiasan. Maka `pager` diganti tombol manual
+di sfwbar.config yang memanggil script ini.
+
+    wsctl watch    cetak {"ws": N} tiap workspace aktif berubah (line-buffered)
+    wsctl set N    pindah ke workspace N
+    wsctl mark N   catat N sbg workspace aktif tanpa pindah (dipakai labwc)
+
+Dukungan per compositor:
+    Hyprland  baca+tulis penuh via IPC (.socket2.sock utk event, hyprctl utk
+              query/dispatch).
+    labwc     tulis via wtype (sintesis Super+N, sebab labwc tak punya IPC
+              perintah); baca via state file yg ditulis `set`/`mark`. Supaya
+              ganti workspace lewat keyboard juga kebaca bar, rc.xml memanggil
+              `wsctl mark N` berdampingan dgn GoToDesktop — lihat README.
+    dwl       tak didukung (tags, bukan workspace; butuh dwlb sbg bar).
+"""
+
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+
+WS_COUNT = 4
+STATE = os.path.join(
+    os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "wsctl-active"
+)
+
+
+def compositor():
+    desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
+    if "hyprland" in desktop or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return "hyprland"
+    if "labwc" in desktop:
+        return "labwc"
+    if "dwl" in desktop:
+        return "dwl"
+    return "unknown"
+
+
+def emit(ws, last=[None]):
+    """Cetak hanya saat berubah — ExecClient sfwbar emit trigger tiap ada output."""
+    if ws is None or ws == last[0]:
+        return
+    last[0] = ws
+    print(json.dumps({"ws": ws}), flush=True)
+
+
+# ------------------------------------------------------------------ Hyprland
+
+
+def hypr_socket_dir():
+    his = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+    if not his:
+        return None
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    # Hyprland >=0.40 pakai $XDG_RUNTIME_DIR/hypr, versi lama /tmp/hypr
+    for base in (os.path.join(runtime, "hypr"), "/tmp/hypr"):
+        path = os.path.join(base, his)
+        if os.path.isdir(path):
+            return path
+    return None
+
+
+def hypr_active():
+    try:
+        out = subprocess.run(
+            ["hyprctl", "activeworkspace", "-j"],
+            capture_output=True, text=True, timeout=2,
+        ).stdout
+        return int(json.loads(out)["id"])
+    except Exception:
+        return None
+
+
+def hypr_watch():
+    emit(hypr_active())
+    sockdir = hypr_socket_dir()
+    if not sockdir:
+        sys.exit("wsctl: socket Hyprland tak ditemukan")
+    # Event yg mengubah workspace aktif. `workspacev2` bawa id langsung, tapi
+    # focusedmon/moveworkspace tidak — jadi selalu query ulang, murah.
+    watched = (
+        "workspace>>", "workspacev2>>", "focusedmon>>",
+        "moveworkspace>>", "moveworkspacev2>>",
+        "createworkspace>>", "destroyworkspace>>",
+    )
+    while True:
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(os.path.join(sockdir, ".socket2.sock"))
+            with sock.makefile("r", buffering=1, errors="replace") as stream:
+                for line in stream:
+                    if line.startswith(watched):
+                        emit(hypr_active())
+        except OSError:
+            # Compositor restart / socket hilang — coba lagi, jangan mati.
+            time.sleep(1)
+
+
+def hypr_set(ws):
+    subprocess.run(["hyprctl", "dispatch", "workspace", str(ws)],
+                   capture_output=True)
+
+
+# --------------------------------------------------------------------- labwc
+
+
+def state_read():
+    try:
+        with open(STATE) as fh:
+            return int(fh.read().strip())
+    except (OSError, ValueError):
+        return 1
+
+
+def state_write(ws):
+    tmp = STATE + ".tmp"
+    with open(tmp, "w") as fh:
+        fh.write(str(ws))
+    os.replace(tmp, STATE)
+
+
+def labwc_watch():
+    """labwc tak punya IPC perintah. labwc 0.9 memang mengekspos
+    ext_workspace_manager_v1, tapi itu protokol Wayland — butuh klien Wayland,
+    bukan sesuatu yg bisa dibaca dari script. Jadi state di-track sendiri lewat
+    `set`/`mark`."""
+    while True:
+        emit(state_read())
+        time.sleep(0.25)
+
+
+def labwc_set(ws):
+    state_write(ws)
+    # Sintesis Super+<digit> supaya keybind rc.xml (GoToDesktop) yg bekerja.
+    try:
+        subprocess.run(["wtype", "-M", "logo", "-k", str(ws), "-m", "logo"],
+                       capture_output=True, timeout=2)
+    except FileNotFoundError:
+        sys.exit("wsctl: butuh wtype untuk labwc — sudo dnf install wtype")
+
+
+# ---------------------------------------------------------------------- main
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(__doc__)
+    cmd = sys.argv[1]
+    wm = compositor()
+
+    if cmd == "watch":
+        if wm == "hyprland":
+            hypr_watch()
+        elif wm == "labwc":
+            labwc_watch()
+        else:
+            # dwl / tak dikenal: cetak sekali biar bar tak kosong, lalu diam.
+            emit(1)
+            while True:
+                time.sleep(3600)
+        return
+
+    if cmd in ("set", "mark"):
+        if len(sys.argv) < 3:
+            sys.exit("wsctl: %s butuh nomor workspace" % cmd)
+        ws = int(sys.argv[2])
+        if not 1 <= ws <= WS_COUNT:
+            sys.exit("wsctl: workspace di luar 1-%d" % WS_COUNT)
+        if cmd == "mark":
+            state_write(ws)
+        elif wm == "hyprland":
+            hypr_set(ws)
+        elif wm == "labwc":
+            labwc_set(ws)
+        else:
+            sys.exit("wsctl: ganti workspace tak didukung di %s" % wm)
+        return
+
+    sys.exit(__doc__)
+
+
+if __name__ == "__main__":
+    main()

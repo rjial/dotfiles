@@ -35,11 +35,28 @@
     <keybind key="W-Left"><action name="SnapToEdge" direction="left"/></keybind>
     <keybind key="W-Right"><action name="SnapToEdge" direction="right"/></keybind>
 
-    <!-- Workspaces (mac Spaces) -->
-    <keybind key="W-1"><action name="GoToDesktop" to="1"/></keybind>
-    <keybind key="W-2"><action name="GoToDesktop" to="2"/></keybind>
-    <keybind key="W-3"><action name="GoToDesktop" to="3"/></keybind>
-    <keybind key="W-4"><action name="GoToDesktop" to="4"/></keybind>
+    <!-- Workspaces (mac Spaces)
+         `wsctl mark` mencatat workspace aktif untuk pager sfwbar. labwc tak
+         punya IPC perintah, jadi pager tak bisa membaca desktop aktif sendiri;
+         state di-track lewat sini + lewat klik di bar. Wajib berpasangan:
+         tiap GoToDesktop harus diikuti mark dgn nomor sama, kalau tidak
+         highlight di bar melenceng. -->
+    <keybind key="W-1">
+      <action name="GoToDesktop" to="1"/>
+      <action name="Execute" command="~/.config/sfwbar/wsctl mark 1"/>
+    </keybind>
+    <keybind key="W-2">
+      <action name="GoToDesktop" to="2"/>
+      <action name="Execute" command="~/.config/sfwbar/wsctl mark 2"/>
+    </keybind>
+    <keybind key="W-3">
+      <action name="GoToDesktop" to="3"/>
+      <action name="Execute" command="~/.config/sfwbar/wsctl mark 3"/>
+    </keybind>
+    <keybind key="W-4">
+      <action name="GoToDesktop" to="4"/>
+      <action name="Execute" command="~/.config/sfwbar/wsctl mark 4"/>
+    </keybind>
     <keybind key="C-W-Left"><action name="SendToDesktop" to="left"/></keybind>
     <keybind key="C-W-Right"><action name="SendToDesktop" to="right"/></keybind>
 

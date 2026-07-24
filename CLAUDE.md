@@ -1,9 +1,12 @@
-# CLAUDE.md — labwc macOS-style Config Deployment
+# CLAUDE.md — macOS-style Config Deployment (labwc / dwl / Hyprland)
 
 > **Untuk sesi Claude Code yang berjalan di mesin Fedora 42 milik user (rjial).**
-> Sesi ini punya akses langsung ke `~/.config/`, `dnf`, dan `labwc`. Repo ini
-> berisi config labwc siap-pakai; tugasmu adalah men-deploy-nya ke mesin ini
-> dan memandu setup sampai shortcut ala macOS berfungsi.
+> Sesi ini punya akses langsung ke `~/.config/`, `dnf`, dan compositor-nya. Repo
+> ini berisi config siap-pakai untuk tiga compositor; tugasmu adalah men-deploy-nya
+> ke mesin ini dan memandu setup sampai shortcut ala macOS berfungsi.
+>
+> Bagian utama di bawah = **labwc** (sesi default). Migrasi **dwl** dan sesi
+> **Hyprland** ada di dua section terakhir file ini.
 
 ## Apa isi repo ini
 
@@ -21,6 +24,7 @@ config/
   labwc/autostart      # jalankan xremap + swaybg
   labwc/environment    # env var sesi
   labwc/menu.xml       # menu klik-kanan
+  hypr/hyprland.conf   # sesi Hyprland (keybind+env+autostart+efek, satu file)
   foot/foot.ini        # terminal
   fuzzel/fuzzel.ini    # launcher
 README.md              # dokumentasi lengkap (rujukan)
@@ -155,3 +159,118 @@ Opsional kecilkan biner: `strip $(which dwl)`.
 ## Sumber kebenaran & sinkronisasi
 Sama seperti labwc: edit di `config/dwl/` (repo) DULU, lalu salin ke lokasi
 pakai. Beda: dwl `config.h` harus **recompile** tiap ubah, bukan sekadar salin.
+
+---
+
+# Sesi Hyprland (tiling + efek) — `config/hypr/hyprland.conf`
+
+Compositor ketiga, jalan berdampingan dgn labwc/dwl. Stack pendukung **dibagi**:
+xremap, sfwbar, waypaper, foot, fuzzel — semua config sama, tak ada duplikasi.
+
+## Kenapa ada
+labwc = stacking (snap manual). dwl = tiling tapi tak ada config runtime (recompile
+tiap ubah). Hyprland = tiling **plus** reload-on-save **plus** efek (animasi, blur,
+gesture). Trade-off: paket lebih besar, bukan wlroots murni (Hyprland fork
+`aquamarine`/hyprland-sendiri sejak 0.40).
+
+## Install
+```bash
+sudo dnf install hyprland xdg-desktop-portal-hyprland brightnessctl
+make link          # symlink config/hypr -> ~/.config/hypr
+```
+Fedora 42 repo = `hyprland 0.45.2`. Session entry `.desktop` **ikut paket**
+(`/usr/share/wayland-sessions/hyprland.desktop`) — jangan bikin sendiri (beda
+dgn labwc/dwl yang perlu `sudo cp ... /usr/share/wayland-sessions/`).
+
+## Aturan menulis keybind (SAMA seperti dwl — batasan xremap)
+xremap makan `Super+<huruf>` ini: `a b c d e f g i j k l n o p r s t u v w x y z
+, - = backspace` + `Shift-z/t/g`. Yang tersisa untuk Hyprland:
+`q m h space Return Tab grave panah 0-9 period slash [ ] Print XF86*`
+plus semua `Ctrl+Super+*` dan `Alt+Super+*` (xremap exact-match modifier, jadi
+modifier tambahan lolos). **Jangan** bind huruf yang sudah dimakan xremap.
+
+## Peta dari labwc (yang berubah, dan sebabnya)
+| labwc | Hyprland | sebab |
+|---|---|---|
+| `Super+Left/Right` = SnapToEdge | `movefocus l/r` | tiling, snap tak relevan |
+| `Super+M`/`H` = Iconify | `movetoworkspacesilent special:minimized` | Hyprland tak punya iconify; `Super+Shift+M` = tampilkan lagi |
+| `Super+Down` = Iconify | `togglefloating` | keputusan user |
+| `Super+Up` = ToggleMaximize | `fullscreen, 1` | mode 1 hormati bar; mode 0 (fullscreen sejati) di `Super+Shift+Up` |
+
+Sisanya identik: launcher, terminal, close, cycle, workspace 1–4, 8 kombinasi
+screenshot, media key.
+
+## Fitur Hyprland yg dipakai (jangan dibuang saat refactor)
+dwindle · animasi bezier `macEase`/`macOut` · blur+shadow+`rounding 8` (sinkron
+`cornerRadius` labwc) · gradient border surface2→teal · `workspace_swipe` 3 jari
+· `special:minimized` · `layerrule blur` untuk sfwbar & fuzzel · `resize_on_border`
+· `follow_mouse = 0` (click-to-focus, mac-like, sama labwc) · `misc:vfr`.
+
+## Catatan integrasi
+- **xremap**: paket terpasang = `xremap-wlroots`. Tetap jalan di Hyprland karena
+  Hyprland implement `wlr-foreign-toplevel-management` → deteksi app (blok `foot`)
+  aktif. Tak perlu varian `xremap-hyprland`.
+- **sfwbar**: taskbar/switcher/jam jalan. Widget `pager` bawaan **TIDAK DIPAKAI** —
+  lihat section "Pager sfwbar" di bawah.
+- **waypaper** ada di `~/.local/bin` → `exec-once` pakai path absolut, sebab
+  PATH sesi SDDM belum tentu memuatnya.
+- **Chromium (Thorium/Helium)**: `env = ELECTRON_OZONE_PLATFORM_HINT,auto`
+  memaksa native Wayland. Ini yang memperbaiki bug address bar tak bisa diklik
+  saat jalan lewat XWayland di WM wlroots.
+- **brightnessctl** belum tentu terpasang → bind brightness dikomentari di config.
+- **Mission Control** = plugin `hyprexpo`, butuh `hyprpm` + header build. Belum
+  dipasang; tawarkan hanya kalau user minta.
+
+## Pager sfwbar — widget bawaan tak dipakai, diganti `wsctl`
+
+Widget `pager` sfwbar cuma punya backend **sway IPC** dan **Hyprland**, dan yg
+Hyprland baca state sekali saat start lalu berhenti menyimak event fokus. Diuji
+di sfwbar 1.0~beta16.1: window di workspace 3, workspace aktif 3, highlight
+tetap di 2. Man sfwbar juga menyatakan *"Placer and pager require sway"*. labwc
+tak punya sway IPC sama sekali, jadi pager di labwc belum pernah jalan — glyph
+`pins`-nya cuma hiasan, klik tak melakukan apa-apa. (Catatan lama di repo ini
+yang bilang pager melacak workspace Hyprland: SALAH, sudah diralat.)
+
+Gantinya `config/sfwbar/wsctl` (python3, tanpa dependensi) + 4 `label` manual di
+`sfwbar.config`:
+- `wsctl watch` — emit `{"ws": N}` tiap workspace aktif berubah. Dipanggil dari
+  `scanner { ExecClient(...) }`, memicu trigger `"ws"`.
+- `wsctl set N` — pindah workspace (dipanggil dari `action = Exec` tiap label).
+- `wsctl mark N` — catat state tanpa pindah (jalur labwc).
+
+Aturan yang mudah dilanggar:
+- **`button` tak bisa menampilkan teks** — `value` pada button = nama ikon/file
+  gambar, jadi glyph nerd-font muncul sebagai ikon fallback "sfw". Pakai `label`
+  (label tetap dukung `action`).
+- **`ExecClient` tak lewat shell** (beda dgn action `Exec` yang lewat shell), jadi
+  `$HOME` tak diekspansi. Wajib dibungkus: `ExecClient("sh -c 'exec $HOME/…'", "ws")`.
+- **Nama style dari expression, bukan class** — `style = If(WsActive=1,"ws_on","ws_off")`
+  plus `trigger = "ws"` di tiap label. CSS pakai `#ws_on` / `#ws_off`.
+- Nama style tombol taskbar = `#taskbar_item` dgn class `.active`. Bukan
+  pseudo-class `:active` (itu "sedang ditekan").
+- Glyph workspace harus sama di tiga file: `labwc/rc.xml` `<desktops><names>`,
+  `hypr/hyprland.conf` `defaultName:`, `sfwbar/sfwbar.config` label `value`.
+- labwc: tiap `GoToDesktop` di `rc.xml` WAJIB dipasangkan `Execute wsctl mark N`
+  nomor sama, kalau tidak highlight melenceng. `wsctl set` di labwc butuh
+  **wtype** (`sudo dnf install wtype`) sebab labwc tak punya IPC perintah —
+  script mensintesis Super+N supaya keybind rc.xml yang bekerja.
+- dwl belum didukung `wsctl` (tags, bukan workspace). Butuh dwlb.
+
+## Portabilitas monitor (JANGAN hardcode nama output)
+`monitor = , preferred, auto, 1` = catch-all, cocok untuk output apa pun. Workspace
+persistent 1-4 sengaja TANPA field `monitor:` supaya ikut display mana pun —
+`workspace = N, persistent:true` (sudah diverifikasi jalan tanpa `monitor:`).
+Override per-mesin masuk `~/.config/hypr/local.conf` (di-`source` paling bawah
+`hyprland.conf`, dibuat otomatis oleh `make link`, di-gitignore). Kalau user minta
+setting monitor spesifik: tulis di `local.conf`, BUKAN di `hyprland.conf`.
+
+Workspace persistent WAJIB ada, kalau tidak swipe 3 jari tampak mati: Hyprland
+cuma geser ke workspace yang sudah eksis (`workspace_swipe_create_new = false`),
+dan tanpa persistent hanya workspace 1 yang eksis. Catatan: `hyprctl reload` tidak
+retro-instansiasi workspace persistent (rule dieksekusi saat monitor connect) —
+efek penuh setelah restart sesi.
+
+## Sumber kebenaran
+`config/hypr/hyprland.conf` di repo. Kalau sudah `make link`, file itu = file
+hidup (symlink) → **tak ada langkah salin**, Hyprland auto-reload saat disimpan.
+Paksa reload: `hyprctl reload`. Verifikasi keybind aktif: `hyprctl binds`.

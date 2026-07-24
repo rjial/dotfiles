@@ -20,8 +20,9 @@ static const int sloppyfocus               = 0;  /* mac = click-to-focus */
 static const int bypass_surface_visibility = 0;
 static const unsigned int borderpx         = 2;
 static const float rootcolor[]             = COLOR(0x303446ff); /* base */
-static const float bordercolor[]           = COLOR(0x51576dff); /* surface1 */
-static const float focuscolor[]            = COLOR(0x81c8beff); /* teal */
+/* Sinkron dgn labwc themerc CatppuccinFrappe: window.{in,}active.border.color */
+static const float bordercolor[]           = COLOR(0x414559ff); /* surface0 — inactive */
+static const float focuscolor[]            = COLOR(0x626880ff); /* surface2 — active */
 static const float urgentcolor[]           = COLOR(0xe78284ff); /* red */
 /* This conforms to the xdg-protocol. Set the alpha to zero to restore the old behavior */
 static const float fullscreen_bg[]         = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -51,7 +52,8 @@ static const Layout layouts[] = {
 
 /* monitors */
 static const MonitorRule monrules[] = {
-	{ NULL,       0.55f, 1,      1,    &layouts[0], WL_OUTPUT_TRANSFORM_NORMAL,   -1,  -1 },
+	/* mfact 0.50 = master:stack 50:50 */
+	{ NULL,       0.50f, 1,      1,    &layouts[0], WL_OUTPUT_TRANSFORM_NORMAL,   -1,  -1 },
 	/* default monitor rule: minimal satu harus ada */
 };
 

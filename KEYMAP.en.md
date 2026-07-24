@@ -1,14 +1,15 @@
-# KEYMAP — macOS-style (labwc / dwl)
+# KEYMAP — macOS-style (labwc / dwl / Hyprland)
 
 *🇮🇩 [Versi Bahasa Indonesia](KEYMAP.md)*
 
 `Super` = the physical **Cmd** key.
 
-Two compositors installed side by side, picked at login (SDDM):
+Three compositors installed side by side, picked at login (SDDM):
 - **labwc** (`config/labwc/rc.xml`) — stacking/floating. Manual snap. Runtime reload.
 - **dwl** (`config/dwl/config.h`) — tiling (dwm-style). Compiled. Recompile on each change.
+- **Hyprland** (`config/hypr/hyprland.conf`) — tiling + effects. Reloads on save.
 
-The **xremap** layer (`config/xremap/config.yml`) is **shared** by both — it remaps
+The **xremap** layer (`config/xremap/config.yml`) is **shared** by all three — it remaps
 app-shortcut letters `Super+` into `Ctrl+` so GUI apps feel mac-like.
 
 Rule: letters remapped by xremap **never** reach the compositor. Keys NOT remapped
@@ -135,11 +136,84 @@ Screenshots & media keys in dwl are the **same** as labwc (see above):
 
 ---
 
-# === Shared (labwc + dwl) ===
+# === Hyprland (tiling + effects) ===
+
+`dwindle` tiling. The labwc keymap is kept wherever it still makes sense; only the
+binds that mean nothing under tiling (snap) or don't exist in Hyprland (minimize)
+changed. Everything lives in one file, `config/hypr/hyprland.conf`, which
+**reloads on save**.
+
+## Window management (Hyprland)
+
+| Shortcut | Action |
+|---|---|
+| `Super+Space` / `Alt+Space` | Open fuzzel (launcher) |
+| `Super+Return` | Open foot (terminal) |
+| `Super+Q` | Close window (killactive) |
+| `Super+Shift+Q` | Quit Hyprland |
+| `Super+Up` | Maximize (fullscreen 1 — bar stays visible) |
+| `Super+Shift+Up` | True fullscreen (fullscreen 0) |
+| `Super+Down` | Toggle floating |
+| `Super+Left` / `Super+Right` | Move focus left / right |
+| `Super+Tab` / `Alt+Tab` / `Super+` `` ` `` | Next window (cyclenext) |
+| `Super+Shift+Tab` / `Alt+Shift+Tab` | Previous window |
+| `Super+M` / `Super+H` | "Minimize" → park on the `special:minimized` workspace |
+| `Super+Shift+M` | Show/hide the `special:minimized` workspace |
+| `Super+Shift+Left/Right/Down` | Move the window within the tiling tree |
+| `Super+Alt+arrows` | Resize the active window (60px / 40px per press) |
+| `Super+.` (period) | Toggle split direction (dwindle) |
+| `Super+/` (slash) | Toggle pseudotile |
+
+> Hyprland has no iconify. `special:minimized` is a hidden workspace — same effect
+> as minimize, the window keeps running.
+
+## Workspaces (Hyprland — 4 desktops, mac Spaces)
+
+| Shortcut | Action |
+|---|---|
+| `Super+1..4` | Switch to workspace 1–4 |
+| `Super+Shift+1..4` | Move window to workspace 1–4 |
+| `Ctrl+Super+Left` / `Ctrl+Super+Right` | Send window to the neighbouring workspace |
+| `Ctrl+Alt+Left` / `Ctrl+Alt+Right` | Switch workspace without taking the window |
+| `Super+scroll` | Switch workspace (skips empty ones) |
+| **3-finger swipe** | Switch workspace (touchpad gesture, mac-natural direction) |
+
+## Multi-monitor (Hyprland)
+
+| Shortcut | Action |
+|---|---|
+| `Super+[` / `Super+]` | Focus previous / next monitor |
+| `Super+Shift+[` / `Super+Shift+]` | Move the current workspace to another monitor |
+
+## Mouse (Hyprland)
+
+| Action | Function |
+|---|---|
+| `Super+left-drag` | Move window |
+| `Super+right-drag` | Resize window |
+| `Super+middle-click` | Toggle floating |
+| drag a window edge | Resize (`resize_on_border`, no modifier) |
+
+Screenshots & media keys on Hyprland are **identical** to labwc (see above):
+`Super+Shift+3/4`, `+Ctrl` for clipboard, the `Print` family, `XF86Audio*`.
+Brightness (`XF86MonBrightness*`) is present but **commented out** — enable after
+`sudo dnf install brightnessctl`.
+
+## Hyprland features in use
+
+dwindle auto-tiling · macOS-ish bezier animations · blur + shadow + `rounding 8`
+(matching labwc's `cornerRadius`) · Catppuccin Frappé gradient border (surface2 → teal)
+· 3-finger `workspace_swipe` · `special:minimized` · `layerrule blur` for
+sfwbar/fuzzel · `resize_on_border` · `follow_mouse=0` (click-to-focus, same as labwc)
+· `ELECTRON_OZONE_PLATFORM_HINT=auto` (Chromium/Electron on native Wayland).
+
+---
+
+# === Shared (labwc + dwl + Hyprland) ===
 
 ## App shortcuts (xremap: Super → Ctrl)
 
-Global across all GUI apps, on **both** compositors. `Super+<letter>` is delivered
+Global across all GUI apps, on **all three** compositors. `Super+<letter>` is delivered
 to the app as `Ctrl+<letter>`.
 
 | Super | Becomes | Common function |
@@ -193,10 +267,13 @@ The foot-specific block wins over the global one, keeping real `Ctrl+C` = SIGINT
 ## Tradeoffs (by design, not bugs)
 
 - **Cmd+arrow text-nav dropped** — arrows drive window snap (labwc) / master size
-  (dwl). Native Home/End still work.
+  (dwl) / focus movement (Hyprland). Native Home/End still work.
 - **Cmd+1..9 browser tabs dropped** — digits switch workspaces/tags. Use `Ctrl+Tab`.
-- **No Mission Control / Exposé** — neither WM has a native window-overview.
+- **No Mission Control / Exposé** — none of the three has a native window overview.
+  Closest: Hyprland's 3-finger swipe, or the `hyprexpo` plugin (needs `hyprpm` +
+  build headers, not wired up in this repo).
 - **Cmd+W** = close tab; window close = **Cmd+Q**.
+- **Minimize on Hyprland isn't iconify** — the window is parked on `special:minimized`.
 
 ---
 
@@ -206,6 +283,12 @@ Source of truth = files under `config/`:
 - labwc window/system: `config/labwc/rc.xml` → deploy to `~/.config/` → `labwc --reconfigure`
 - dwl window/system: `config/dwl/config.h` → copy to `~/Dokumen/dwl/` → **recompile**
   (`make CC=clang && sudo make install`) → log out/in. No runtime reload.
+- Hyprland window/system: `config/hypr/hyprland.conf` → **reloads on save** (nothing
+  to copy once `make link` is done). Force it with `hyprctl reload`.
 - App remap (shared): `config/xremap/config.yml` → restart xremap
+
+> Before adding a compositor keybind, check the key isn't eaten by xremap. What's
+> left safe: `q m h space Return Tab grave arrows 0-9 period slash [ ] Print`
+> plus any `Ctrl+Super+*` / `Alt+Super+*` combo (xremap matches modifiers exactly).
 
 After editing, re-deploy to the live location then reload/recompile.
