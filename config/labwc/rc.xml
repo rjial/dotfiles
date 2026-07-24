@@ -9,7 +9,12 @@
       <name>&#xf0ca6;</name>
     </names>
   </desktops>
-  <theme><cornerRadius>8</cornerRadius></theme>
+  <theme>
+    <name>CatppuccinFrappe</name>
+    <cornerRadius>8</cornerRadius>
+    <font place="ActiveWindow"><name>Inter</name><size>10</size></font>
+    <font place="InactiveWindow"><name>Inter</name><size>10</size></font>
+  </theme>
   <keyboard>
     <!-- Launcher / terminal -->
     <keybind key="W-space"><action name="Execute" command="fuzzel"/></keybind>

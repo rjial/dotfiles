@@ -1,0 +1,36 @@
+# Catppuccin Frappé — labwc window theme (samakan dgn sfwbar/dwl/fuzzel)
+# base #303446  mantle #292c3c  surface1 #51576d  teal #81c8be
+# text #c6d0f5  overlay1 #838ba7
+
+border.width: 2
+padding.height: 6
+padding.width: 8
+
+# --- Border (membaur senada titlebar) ---
+window.active.border.color:   #626880
+window.inactive.border.color: #414559
+
+# --- Titlebar background ---
+window.active.title.bg.color:   #303446
+window.inactive.title.bg.color: #292c3c
+
+# --- Titlebar text ---
+window.active.label.text.color:   #c6d0f5
+window.inactive.label.text.color: #838ba7
+window.label.text.justify: center
+
+# --- Tombol titlebar (close/max/iconify) ---
+window.active.button.unpressed.image.color:   #c6d0f5
+window.inactive.button.unpressed.image.color: #838ba7
+window.active.button.hover.image.color:       #81c8be
+
+# --- Menu klik-kanan ---
+menu.items.bg.color:          #292c3c
+menu.items.text.color:        #c6d0f5
+menu.items.active.bg.color:   #81c8be
+menu.items.active.text.color: #303446
+
+# --- OSD (window switcher Super+Tab) ---
+osd.bg.color:         #292c3c
+osd.border.color:     #81c8be
+osd.label.text.color: #c6d0f5

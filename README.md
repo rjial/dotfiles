@@ -75,16 +75,21 @@ in the repo takes effect live, no re-copy.
 ```bash
 git clone <your-repo-url> ~/.dotfiles
 cd ~/.dotfiles
-make link        # symlink; make status to inspect; make unlink to revert
+make link        # symlink config/* -> ~/.config/
+make theme       # symlink labwc theme(s) -> ~/.local/share/themes/
 mkdir -p ~/Pictures
 ```
 
 | target | action |
 |---|---|
 | `make link`   | symlink `config/*` → `~/.config/` (backup real dirs to `.bak`) |
-| `make unlink` | remove symlinks, restore `.bak` |
-| `make relink` | unlink then link |
+| `make theme`  | symlink `config/labwc/themes/*` → `~/.local/share/themes/` |
+| `make unlink` | remove all symlinks, restore `.bak` |
+| `make relink` | unlink then re-link + theme |
 | `make status` | show each symlink's state |
+
+> `make theme` is separate from `make link` because window themes live in
+> `~/.local/share/themes/`, not `~/.config/`.
 
 ## 4. labwc — start & verify
 
@@ -136,6 +141,18 @@ session menu.
 
 > Note: dwl uses **tags** (not workspaces), so sfwbar's workspace pager won't
 > track them; the taskbar (foreign-toplevel) still works. Native dwl bar = dwlb.
+
+## Theming (labwc window decorations)
+
+labwc uses Openbox-style themes (`themerc`). This repo ships **CatppuccinFrappe**
+(`config/labwc/themes/CatppuccinFrappe/openbox-3/themerc`), wired via
+`<theme><name>CatppuccinFrappe</name></theme>` in `rc.xml`.
+
+- Tweak colors/border: edit the `themerc` (live via symlink) → `labwc --reconfigure`.
+- Full key list: `man 5 labwc-theme`.
+- **CSD caveat:** GTK/Electron apps draw their own titlebars (client-side
+  decoration) and ignore the labwc theme; it applies to server-side-decorated
+  windows only.
 
 ## Known tradeoffs (by design, not bugs)
 
