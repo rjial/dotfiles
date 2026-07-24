@@ -1,0 +1,21 @@
+# Backup dir dari `make link`
+*.bak
+
+# Claude Code lokal (permission mesin ini — jangan publik)
+.claude/settings.local.json
+.claude/settings.json
+
+# waypaper: state murni, di-regenerate waypaper tiap ganti wallpaper
+# (embed path personal + username). Symlink tetap jalan lokal, cuma tak di-track.
+config/waypaper/config.ini
+
+# dwl build artifacts (kalau source dwl ikut masuk repo)
+config/dwl/*.o
+config/dwl/dwl
+config/dwl/*-protocol.h
+
+# OS / editor junk
+.DS_Store
+*.swp
+*~
+.claude/plans/

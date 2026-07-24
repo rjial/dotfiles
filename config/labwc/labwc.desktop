@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=labwc
+Comment=labwc Wayland compositor
+Exec=dbus-run-session labwc
+Type=Application
+DesktopNames=labwc

@@ -1,0 +1,51 @@
+# xremap — the Cmd (Super) remap engine for labwc.
+# Super is the physical Cmd key. This file remaps ONLY the app-shortcut letters
+# (Super+c/v/x/s/z/...) into their Ctrl+ equivalents so GUI apps behave mac-like.
+# Keys NOT listed here (q, m, h, space, tab, grave, arrows, digits 0-9) fall
+# through to labwc as real Super+ binds for window management.
+#
+# IMPORTANT: the foot block MUST come first — an app-specific match overrides
+# the global block for the same key.
+keymap:
+  - name: Terminal smart copy/paste (foot)
+    application:
+      only: [foot]
+    remap:
+      Super-c: Ctrl-Shift-c      # copy in foot; real Ctrl-c untouched = SIGINT
+      Super-v: Ctrl-Shift-v      # paste
+      Super-x: Ctrl-Shift-x
+      Super-f: Ctrl-Shift-f      # search (foot)
+
+  - name: Global Cmd -> Ctrl (GUI app shortcuts)
+    remap:
+      Super-a: Ctrl-a
+      Super-c: Ctrl-c
+      Super-v: Ctrl-v
+      Super-x: Ctrl-x
+      Super-z: Ctrl-z
+      Super-Shift-z: Ctrl-Shift-z     # redo
+      Super-s: Ctrl-s
+      Super-f: Ctrl-f
+      Super-n: Ctrl-n
+      Super-t: Ctrl-t
+      Super-Shift-t: Ctrl-Shift-t     # reopen tab
+      Super-r: Ctrl-r
+      Super-p: Ctrl-p
+      Super-o: Ctrl-o
+      Super-w: Ctrl-w                  # close tab (app); window close = Super-q via labwc
+      Super-l: Ctrl-l
+      Super-d: Ctrl-d
+      Super-e: Ctrl-e
+      Super-g: Ctrl-g
+      Super-Shift-g: Ctrl-Shift-g
+      Super-b: Ctrl-b
+      Super-i: Ctrl-i
+      Super-u: Ctrl-u
+      Super-y: Ctrl-y
+      Super-k: Ctrl-k
+      Super-j: Ctrl-j
+      Super-comma: Ctrl-comma          # preferences
+      Super-minus: Ctrl-minus          # zoom out
+      Super-equal: Ctrl-equal          # zoom in
+      Super-backspace: Ctrl-backspace
+# NOT remapped (reach labwc): q, m, h, space, tab, grave, arrows, digits 0-9

@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<labwc_config>
+  <core><gap>6</gap></core>
+  <desktops number="4">
+    <names>
+      <name>&#xf0ca0;</name>
+      <name>&#xf0ca2;</name>
+      <name>&#xf0ca4;</name>
+      <name>&#xf0ca6;</name>
+    </names>
+  </desktops>
+  <theme><cornerRadius>8</cornerRadius></theme>
+  <keyboard>
+    <!-- Launcher / terminal -->
+    <keybind key="W-space"><action name="Execute" command="fuzzel"/></keybind>
+    <keybind key="A-space"><action name="Execute" command="fuzzel"/></keybind>
+    <keybind key="W-Return"><action name="Execute" command="foot"/></keybind>
+
+    <!-- Window management (Super = Cmd) -->
+    <keybind key="W-q"><action name="Close"/></keybind>
+    <keybind key="W-m"><action name="Iconify"/></keybind>
+    <keybind key="W-h"><action name="Iconify"/></keybind>
+    <keybind key="W-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="W-S-Tab"><action name="PreviousWindow"/></keybind>
+    <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="A-S-Tab"><action name="PreviousWindow"/></keybind>
+    <keybind key="W-grave"><action name="NextWindow"/></keybind>
+    <keybind key="W-Up"><action name="ToggleMaximize"/></keybind>
+    <keybind key="W-Down"><action name="Iconify"/></keybind>
+    <keybind key="W-Left"><action name="SnapToEdge" direction="left"/></keybind>
+    <keybind key="W-Right"><action name="SnapToEdge" direction="right"/></keybind>
+
+    <!-- Workspaces (mac Spaces) -->
+    <keybind key="W-1"><action name="GoToDesktop" to="1"/></keybind>
+    <keybind key="W-2"><action name="GoToDesktop" to="2"/></keybind>
+    <keybind key="W-3"><action name="GoToDesktop" to="3"/></keybind>
+    <keybind key="W-4"><action name="GoToDesktop" to="4"/></keybind>
+    <keybind key="C-W-Left"><action name="SendToDesktop" to="left"/></keybind>
+    <keybind key="C-W-Right"><action name="SendToDesktop" to="right"/></keybind>
+
+    <!-- Screenshots -->
+    <keybind key="W-S-3">
+      <action name="Execute" command='sh -c "grim ~/Pictures/shot-$(date +%s).png"'/>
+    </keybind>
+    <keybind key="W-S-4">
+      <action name="Execute" command='sh -c "grim -g \"$(slurp)\" ~/Pictures/shot-$(date +%s).png"'/>
+    </keybind>
+    <!-- + Ctrl = ke clipboard (bukan file) -->
+    <keybind key="C-W-S-3">
+      <action name="Execute" command='sh -c "grim - | wl-copy -t image/png"'/>
+    </keybind>
+    <keybind key="C-W-S-4">
+      <action name="Execute" command='sh -c "grim -g \"$(slurp)\" - | wl-copy -t image/png"'/>
+    </keybind>
+    <!-- Tombol PrtSc: default clipboard; + Ctrl = ke file -->
+    <keybind key="Print">
+      <action name="Execute" command='sh -c "grim - | wl-copy -t image/png"'/>
+    </keybind>
+    <keybind key="S-Print">
+      <action name="Execute" command='sh -c "grim -g \"$(slurp)\" - | wl-copy -t image/png"'/>
+    </keybind>
+    <keybind key="C-Print">
+      <action name="Execute" command='sh -c "grim ~/Pictures/shot-$(date +%s).png"'/>
+    </keybind>
+    <keybind key="C-S-Print">
+      <action name="Execute" command='sh -c "grim -g \"$(slurp)\" ~/Pictures/shot-$(date +%s).png"'/>
+    </keybind>
+
+    <!-- Media keys -->
+    <keybind key="XF86AudioRaiseVolume"><action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"/></keybind>
+    <keybind key="XF86AudioLowerVolume"><action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"/></keybind>
+    <keybind key="XF86AudioMute"><action name="Execute" command="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"/></keybind>
+  </keyboard>
+  <mouse/>
+</labwc_config>

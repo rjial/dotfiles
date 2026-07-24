@@ -1,0 +1,6 @@
+# labwc autostart — runs inside the labwc session.
+lxpolkit &                             # polkit auth agent — WAJIB agar udisks mount minta password
+# xremap must run here so its app-detection sees labwc's toplevel protocol.
+xremap ~/.config/xremap/config.yml &   # if installed via cargo: ~/.cargo/bin/xremap
+waypaper --restore &                   # restore wallpaper terakhir (backend swaybg)
+sfwbar &                               # top menu-bar ala macOS
