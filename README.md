@@ -13,7 +13,7 @@ while window-management keys fall through to the compositor. Launcher = **fuzzel
 (Spotlight), terminal = **foot** (smart copy: Cmd+C copies, real Ctrl+C = SIGINT),
 top bar = **sfwbar**, wallpaper = **waypaper**.
 
-Full keybind reference: [`KEYMAP.md`](KEYMAP.md).
+Full keybind reference: [`KEYMAP.en.md`](KEYMAP.en.md) (English) · [`KEYMAP.md`](KEYMAP.md) (Indonesia).
 
 ## Layout
 

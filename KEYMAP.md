@@ -1,5 +1,7 @@
 # KEYMAP — macOS-style (labwc / dwl)
 
+*🇬🇧 [English version](KEYMAP.en.md)*
+
 `Super` = tombol fisik **Cmd**.
 
 Dua compositor terpasang berdampingan, pilih saat login (SDDM):
@@ -28,12 +30,12 @@ di-remap (`q m h space tab grave arrows 0-9 period slash bracket Print`) jatuh k
 | `Super+Tab` / `Alt+Tab` | Window berikutnya |
 | `Super+Shift+Tab` / `Alt+Shift+Tab` | Window sebelumnya |
 | `Super+` `` ` `` (grave) | Window berikutnya |
-
-> `Alt+Space` dan `Alt+Tab` sengaja di-mirror dari `Super+` supaya muscle memory Alt+Tab tetap kepakai.
 | `Super+Up` | Toggle maximize |
 | `Super+Down` | Minimize |
 | `Super+Left` | Snap kiri |
 | `Super+Right` | Snap kanan |
+
+> `Alt+Space` dan `Alt+Tab` sengaja di-mirror dari `Super+` supaya muscle memory Alt+Tab tetap kepakai.
 
 ## Workspaces (mac Spaces — 4 desktop)
 
