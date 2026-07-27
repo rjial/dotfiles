@@ -155,8 +155,9 @@ changed. Everything lives in one file, `config/hypr/hyprland.conf`, which
 | `Super+Shift+Up` | True fullscreen (fullscreen 0) |
 | `Super+Down` | Toggle floating |
 | `Super+Left` / `Super+Right` | Move focus left / right |
-| `Super+Tab` / `Alt+Tab` / `Super+` `` ` `` | Next window (cyclenext) |
-| `Super+Shift+Tab` / `Alt+Shift+Tab` | Previous window |
+| `Alt+Tab` / `Alt+Shift+Tab` | snappy-switcher overlay — all windows, MRU order |
+| `Super+Tab` / `Super+Shift+Tab` | Overlay — current workspace only |
+| `Super+` `` ` `` | Next window (cyclenext) — no-overlay fallback |
 | `Super+M` / `Super+H` | "Minimize" → park on the `special:minimized` workspace |
 | `Super+Shift+M` | Show/hide the `special:minimized` workspace |
 | `Super+Shift+Left/Right/Down` | Move the window within the tiling tree |
@@ -166,6 +167,11 @@ changed. Everything lives in one file, `config/hypr/hyprland.conf`, which
 
 > Hyprland has no iconify. `special:minimized` is a hidden workspace — same effect
 > as minimize, the window keeps running.
+
+> **The switcher overlay is Hyprland-only.** snappy-switcher reads the window list
+> and MRU order over Hyprland IPC, so `Alt+Tab` stays a plain cycle on labwc/dwl.
+> The daemon comes from `exec-once = snappy-wrapper`; if it dies, `Super+` `` ` ``
+> still works. Config: `config/snappy-switcher/config.ini`.
 
 ## Workspaces (Hyprland — 4 desktops, mac Spaces)
 

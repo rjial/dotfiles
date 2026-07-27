@@ -33,6 +33,7 @@ config/
   foot/foot.ini        # terminal font/theme
   fuzzel/fuzzel.ini    # launcher look
   sfwbar/sfwbar.config # top menu-bar (launcher + taskbar + clock + status)
+  snappy-switcher/     # Alt+Tab overlay switcher (Hyprland only)
   waypaper/            # wallpaper picker (config.ini is git-ignored = state)
 Makefile               # symlink manager (config/* -> ~/.config/*)
 KEYMAP.md              # full keybind reference (labwc + dwl + Hyprland)
@@ -187,6 +188,43 @@ Verify:
    **Super+Left/Right** move focus; **Super+M** minimize → **Super+Shift+M** brings it back.
 3. Three-finger swipe on the touchpad switches workspaces.
 4. **Super+Shift+4** region screenshot → `~/Pictures`.
+
+### The Alt+Tab overlay (snappy-switcher)
+
+`Alt+Tab` and `Super+Tab` open **snappy-switcher**, an overlay switcher with app
+icons and window titles — the macOS `Cmd+Tab` panel, roughly. It is **Hyprland-only**:
+it reads the window list and MRU order over Hyprland IPC, so labwc and dwl keep
+their own plain cycle binds.
+
+It is not packaged for Fedora. Build and install from source:
+
+```bash
+git clone https://github.com/OpalAayan/snappy-switcher ~/Dokumen/snappy-switcher
+cd ~/Dokumen/snappy-switcher && make && sudo make install
+```
+
+Skip upstream's `snappy-install-config` — it would write a real
+`~/.config/snappy-switcher/config.ini` and `make link` would then shove it aside
+to `.bak`. This repo already owns that file; `make link` symlinks it. Themes are
+*not* vendored here: `sudo make install` drops them in
+`/usr/local/share/snappy-switcher/themes/`, which the binary searches after
+`~/.config/snappy-switcher/themes/`, so `name = catppuccin-frappe.ini` resolves
+on its own.
+
+| Bind | Action |
+|---|---|
+| `Alt+Tab` / `Alt+Shift+Tab` | all windows, MRU order |
+| `Super+Tab` / `Super+Shift+Tab` | current workspace only |
+| `Super+`` ` `` | plain `cyclenext` — fallback if the daemon is dead |
+
+The daemon starts from `exec-once = snappy-wrapper`; the wrapper waits for the
+Hyprland socket first, so it doesn't race SDDM login. Verify with
+`pgrep -x snappy-switcher`.
+
+> Gotcha: the `--mod` flag **must** name the modifier in its own bind
+> (`ALT, TAB` → `--mod alt`). snappy holds the panel open while that modifier is
+> held; a mismatch means it never sees the key down and it paints a CONFIG ERROR
+> banner instead of the switcher.
 
 > Notes: the workspace pager in the bar is **not** sfwbar's `pager` widget — see
 > [The workspace pager](#the-workspace-pager) below for why. Chromium-based

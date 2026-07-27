@@ -8,7 +8,7 @@ DOTFILES := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 CONFIG   := $(HOME)/.config
 
 # Dir di config/ yang di-symlink utuh ke ~/.config/
-DIRS := foot fuzzel hypr labwc sfwbar waypaper xremap
+DIRS := foot fuzzel hypr labwc sfwbar snappy-switcher waypaper xremap
 
 # Tema labwc (Openbox-style) — di-symlink ke ~/.local/share/themes/
 THEMES_SRC := $(DOTFILES)/config/labwc/themes

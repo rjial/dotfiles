@@ -25,6 +25,7 @@ config/
   labwc/environment    # env var sesi
   labwc/menu.xml       # menu klik-kanan
   hypr/hyprland.conf   # sesi Hyprland (keybind+env+autostart+efek, satu file)
+  snappy-switcher/     # overlay Alt+Tab (HANYA Hyprland, butuh IPC-nya)
   foot/foot.ini        # terminal
   fuzzel/fuzzel.ini    # launcher
 README.md              # dokumentasi lengkap (rujukan)
@@ -205,6 +206,30 @@ dwindle · animasi bezier `macEase`/`macOut` · blur+shadow+`rounding 8` (sinkro
 `cornerRadius` labwc) · gradient border surface2→teal · `workspace_swipe` 3 jari
 · `special:minimized` · `layerrule blur` untuk sfwbar & fuzzel · `resize_on_border`
 · `follow_mouse = 0` (click-to-focus, mac-like, sama labwc) · `misc:vfr`.
+
+## snappy-switcher — overlay Alt+Tab (Hyprland saja)
+
+Switcher overlay (ikon app + judul window, ala Cmd+Tab macOS). Sumber:
+<https://github.com/OpalAayan/snappy-switcher>, clone di `~/Dokumen/snappy-switcher`,
+dipasang `sudo make install` ke `/usr/local/bin/`. Tak ada paket Fedora.
+
+- **Hyprland-only** — baca daftar window + urutan MRU lewat Hyprland IPC. Di
+  labwc/dwl wrapper langsung exit (socket tak ada), keybind cycle lama tetap jalan.
+- **JANGAN jalankan `snappy-install-config`.** Script itu menulis
+  `~/.config/snappy-switcher/config.ini` sebagai file asli; `make link` lalu
+  menggesernya ke `.bak`. Repo ini yang pegang config — cukup `make link`.
+- **Tema tidak di-vendor.** Binary cari urut: `~/.config/snappy-switcher/themes/`,
+  `/usr/share/…`, `/usr/local/share/snappy-switcher/themes/`. `sudo make install`
+  upstream taruh di path ketiga, jadi `name = catppuccin-frappe.ini` ketemu sendiri.
+  Kalau mau tema custom: bikin `config/snappy-switcher/themes/` di repo.
+- **Flag `--mod` WAJIB sama dgn modifier bind-nya** (`bind = ALT, TAB` →
+  `--mod alt`). snappy menahan panel selama modifier ditekan; salah nama =
+  banner CONFIG ERROR, bukan switcher.
+- Bind: `Alt+Tab`/`Alt+Shift+Tab` (semua window), `Super+Tab`/`Super+Shift+Tab`
+  (`--workspace`). `Super+grave` sengaja disisakan `cyclenext` sebagai fallback
+  kalau daemon mati. Daemon: `exec-once = snappy-wrapper` (wrapper tunggu socket
+  Hyprland siap dulu, anti-race saat login SDDM).
+- Verifikasi: `pgrep -x snappy-switcher`, `hyprctl binds | grep -A2 snappy`.
 
 ## Catatan integrasi
 - **xremap**: paket terpasang = `xremap-wlroots`. Tetap jalan di Hyprland karena

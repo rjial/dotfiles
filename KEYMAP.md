@@ -151,8 +151,9 @@ Semua di satu file `config/hypr/hyprland.conf`, **auto-reload saat disimpan**.
 | `Super+Shift+Up` | Fullscreen sejati (fullscreen 0) |
 | `Super+Down` | Toggle floating |
 | `Super+Left` / `Super+Right` | Pindah fokus kiri / kanan |
-| `Super+Tab` / `Alt+Tab` / `Super+` `` ` `` | Window berikutnya (cyclenext) |
-| `Super+Shift+Tab` / `Alt+Shift+Tab` | Window sebelumnya |
+| `Alt+Tab` / `Alt+Shift+Tab` | Switcher overlay snappy-switcher — semua window, urut MRU |
+| `Super+Tab` / `Super+Shift+Tab` | Switcher overlay — hanya window di workspace aktif |
+| `Super+` `` ` `` | Window berikutnya (cyclenext) — fallback tanpa overlay |
 | `Super+M` / `Super+H` | "Minimize" → parkir ke workspace `special:minimized` |
 | `Super+Shift+M` | Tampilkan/sembunyikan workspace `special:minimized` |
 | `Super+Shift+Left/Right/Down` | Pindah posisi window dalam tiling |
@@ -162,6 +163,11 @@ Semua di satu file `config/hypr/hyprland.conf`, **auto-reload saat disimpan**.
 
 > Hyprland tak punya iconify. `special:minimized` = workspace khusus yang
 > disembunyikan — fungsinya sama seperti minimize, window tetap hidup.
+
+> **Switcher overlay hanya di Hyprland.** snappy-switcher membaca daftar window
+> + urutan MRU lewat Hyprland IPC, jadi di labwc/dwl `Alt+Tab` tetap cycle biasa.
+> Daemon dijalankan `exec-once = snappy-wrapper`; kalau mati, `Super+` `` ` ``
+> tetap bekerja. Config: `config/snappy-switcher/config.ini`.
 
 ## Workspaces (Hyprland — 4 desktop, mac Spaces)
 
