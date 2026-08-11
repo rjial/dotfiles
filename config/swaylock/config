@@ -1,0 +1,74 @@
+# swaylock — lock screen (labwc / dwl / Hyprland).
+# Dipanggil dari config/scripts/powermenu: `swaylock -f` (Lock, dan sebelum Suspend).
+#
+# Tema: Catppuccin Frappé (accent teal) — sama dgn mako/fuzzel/foot/sfwbar.
+#
+# PENTING: paket Fedora = swaylock UPSTREAM, bukan swaylock-effects. Jadi
+# `screenshots`, `effect-blur`, `effect-pixelate` TIDAK ADA — memasukkannya
+# membuat swaylock gagal start dan layar tak terkunci sama sekali. Kalau nanti
+# ingin blur, itu berarti ganti paket (swaylock-effects, tak ada di repo Fedora).
+#
+# `daemonize` sengaja TIDAK ditaruh di sini — powermenu memanggil `-f` eksplisit
+# supaya jelas terbaca di call-site.
+
+# --- Perilaku ---------------------------------------------------------------
+ignore-empty-password
+show-failed-attempts
+indicator-caps-lock
+# Indikator hanya muncul saat ada input (default). Untuk selalu tampil:
+# indicator-idle-visible
+
+# Fade-in singkat supaya transisi tak berkedip.
+fade-in=0.2
+
+# --- Jam --------------------------------------------------------------------
+clock
+timestr=%H:%M
+datestr=%A, %e %B
+font=Inter
+font-size=28
+
+# --- Indikator --------------------------------------------------------------
+indicator-radius=110
+indicator-thickness=8
+
+# --- Warna (Frappé) ---------------------------------------------------------
+# Format swaylock = RRGGBB / RRGGBBAA, TANPA '#'.
+# base #303446 · surface0 #414559 · surface1 #51576d · text #c6d0f5
+# teal #81c8be · red #e78284 · yellow #e5c890 · lavender #babbf1
+
+color=303446
+
+# Idle (belum mengetik)
+inside-color=414559
+ring-color=81c8be
+line-color=303446
+text-color=c6d0f5
+separator-color=00000000
+
+# Ada karakter diketik
+key-hl-color=a6d189
+bs-hl-color=e5c890
+inside-clear-color=414559
+ring-clear-color=e5c890
+line-clear-color=303446
+text-clear-color=c6d0f5
+
+# Sedang memverifikasi password
+inside-ver-color=414559
+ring-ver-color=babbf1
+line-ver-color=303446
+text-ver-color=c6d0f5
+
+# Password salah
+inside-wrong-color=414559
+ring-wrong-color=e78284
+line-wrong-color=303446
+text-wrong-color=e78284
+
+# Caps Lock aktif
+inside-caps-lock-color=414559
+ring-caps-lock-color=e5c890
+caps-lock-key-hl-color=a6d189
+caps-lock-bs-hl-color=e5c890
+text-caps-lock-color=e5c890

@@ -23,19 +23,31 @@ config/
   labwc/rc.xml         # keybind window-management + sistem
   labwc/autostart      # jalankan xremap + swaybg
   labwc/environment    # env var sesi
-  labwc/menu.xml       # menu klik-kanan
+  labwc/menu.xml       # menu klik-kanan (+ submenu Power)
   hypr/hyprland.conf   # sesi Hyprland (keybind+env+autostart+efek, satu file)
+  dwl/config.h         # keybind dwl (compiled in — recompile tiap ubah)
+  dwl/config.mk        # flag build dwl (XWayland ON) — recompile tiap ubah
+  dwl/autostart.sh     # startup dwl + loop stdin OSD tag
   snappy-switcher/     # overlay Alt+Tab (HANYA Hyprland, butuh IPC-nya)
+  mako/config          # notification daemon + blok [category=osd] (ketiga WM)
+  scripts/powermenu    # power menu fuzzel (ketiga WM)
+  scripts/osd          # renderer OSD generik lewat mako (ketiga WM)
+  scripts/osd-dwl-tag  # bitmask tag dwl -> teks OSD (dwl saja)
+  swaylock/config      # tema lock screen (ketiga WM)
   foot/foot.ini        # terminal
   fuzzel/fuzzel.ini    # launcher
 README.md              # dokumentasi lengkap (rujukan)
 ```
 
+`make link` mem-symlink dir di `DIRS` (`Makefile:11`) utuh ke `~/.config/`.
+Menambah **dir baru** di `config/` WAJIB ditambah ke `DIRS` juga — file baru di
+dalam dir yang sudah ter-symlink langsung hidup tanpa ubah Makefile.
+
 ## Tugas deploy (jalankan berurutan, konfirmasi ke user di tiap langkah sudo)
 
 ### 1. Install paket
 ```bash
-sudo dnf install labwc fuzzel foot grim slurp swaybg wl-clipboard
+sudo dnf install labwc fuzzel foot grim slurp swaybg wl-clipboard mako swaylock
 ```
 xremap TIDAK ada di repo Fedora. Coba COPR dulu:
 ```bash
@@ -127,10 +139,29 @@ sudo dnf install fcft-devel
 > dwl rilis 0.7 target wlroots 0.18 (JANGAN, versi beda).
 
 ### 2. Clone
+Clone yang SUDAH ADA di mesin ini: **`~/Dokumen/dwl`** (bukan `~/src/dwl`).
+Pakai itu, jangan clone ulang.
 ```bash
-git clone https://codeberg.org/dwl/dwl ~/src/dwl
-git clone https://github.com/kolunmi/dwlb ~/src/dwlb   # kalau pakai dwlb
+# kalau belum ada:
+git clone https://codeberg.org/dwl/dwl ~/Dokumen/dwl
+git clone https://github.com/kolunmi/dwlb ~/Dokumen/dwlb   # kalau pakai dwlb
 ```
+
+### 2b. XWayland WAJIB aktif — `config.mk`
+Default dwl upstream mematikan XWayland (`XWAYLAND =` kosong). Di mesin ini itu
+membuat **`DISPLAY` tak diset**, sehingga `lxpolkit` (GTK X11-only) mati dgn
+`cannot open display` dan autostart kehilangan agent polkit — plus semua app X11
+(JetBrains, Electron lama) tak bisa jalan. `config/dwl/config.mk` di repo sudah
+mengaktifkannya:
+```make
+XWAYLAND = -DXWAYLAND
+XLIBS = xcb xcb-icccm
+```
+Dep: `libxcb-devel xcb-util-wm-devel xorg-x11-server-Xwayland` (sudah terpasang);
+wlroots Fedora punya `WLR_HAS_XWAYLAND 1`, cek:
+`grep XWAYLAND /usr/include/wlroots-0.19/wlr/config.h`.
+Verifikasi setelah relog: `pgrep -a Xwayland` dan `echo $DISPLAY` (Xwayland lazy —
+baru spawn saat ada klien X pertama, tapi `DISPLAY` sudah diset sejak setup).
 
 ### 3. Compile dgn optimasi LLVM
 dwl Makefile taruh include (`pkg-config`) di `DWLCFLAGS` terpisah → override
@@ -147,7 +178,7 @@ buat LTO clang); `-DNDEBUG` buang assert; `-pipe` kompilasi lebih cepat.
 Opsional kecilkan biner: `strip $(which dwl)`.
 
 ## Yg harus ditulis (setelah paket + clone beres)
-1. `~/src/dwl/config.h` — mirror keybind labwc `rc.xml`:
+1. `~/Dokumen/dwl/config.h` — mirror keybind labwc `rc.xml`:
    - MODKEY = Super (Cmd). Snap → tag/layout dwl. Screenshot (grim/slurp),
      media key (wpctl), launcher fuzzel, terminal foot.
    - Digit 1-9 = tags (bukan workspace). Tetap SISAKAN huruf shortcut app
@@ -155,11 +186,49 @@ Opsional kecilkan biner: `strip $(which dwl)`.
 2. `config/dwl/` di repo — salinan `config.h`, autostart, config dwlb (sumber
    kebenaran, sama pola seperti `config/labwc/`).
 3. autostart dwl: `lxpolkit`, `xremap`, `waypaper --restore`, bar (`dwlb` atau
-   `sfwbar`) — dwl jalankan lewat flag `-s` (startup command) atau script.
+   `sfwbar`), `mako` — dwl jalankan lewat flag `-s` (startup command) atau script.
+
+## OSD tag dwl — loop stdin di `autostart.sh`
+
+dwl mem-`pipe()` stdout-nya ke **stdin** script `-s` (`dwl.c:2254-2271`), dan
+`printstatus()` (`dwl.c:2089-2125`) menulis ke stdout **tanpa syarat** — ini
+bagian dwl inti, TIDAK butuh dwlb. dwlb hanya salah satu konsumen stdout itu.
+Format per-monitor, urut: `title`, `appid`, `fullscreen`, `floating`, `selmon`,
+`tags <occ> <selected> <clienttags> <urg>`, `layout`.
+
+Loop di ujung `config/dwl/autostart.sh` membaca itu dan memanggil
+`config/scripts/osd-dwl-tag`. Aturan yang mudah dilanggar:
+
+- **Loop WAJIB paling bawah** — ia blocking. Semua daemon harus `&` di atasnya.
+- **Filter `selmon`** — multi-monitor mengirim satu blok per output; tanpa filter
+  OSD menampilkan tag monitor yang tidak aktif. `selmon` selalu mendahului `tags`
+  untuk monitor yang sama, jadi aman dipakai sebagai penanda.
+- **Dedupe nilai `tags` sebelumnya** — `printstatus()` juga dipanggil dari
+  `focusclient`, `setlayout` (`dwl.c:2703`), `urgent` (`dwl.c:2965`). Tanpa
+  dedupe, OSD muncul tiap ganti fokus window.
+- **stdout dwl cuma boleh SATU konsumen.** Kalau dwlb dipasang nanti,
+  `autostart.sh` harus `tee` ke dwlb — bukan dua proses baca stdin bersamaan.
+- Kalau loop berhenti membaca, dwl tetap aman (stdout non-blocking,
+  `dwl.c:2277`) tapi OSD mati diam-diam. Itu gejalanya, bukan freeze.
+- OSD butuh **mako jalan**. Kalau `mako &` hilang dari autostart, OSD diam tanpa
+  pesan error apa pun.
+- `wsctl` **tidak** disentuh — pager sfwbar tetap tak melacak tag dwl. OSD ini
+  penggantinya, bukan pelengkapnya.
 
 ## Sumber kebenaran & sinkronisasi
-Sama seperti labwc: edit di `config/dwl/` (repo) DULU, lalu salin ke lokasi
-pakai. Beda: dwl `config.h` harus **recompile** tiap ubah, bukan sekadar salin.
+Sama seperti labwc: edit di `config/dwl/` (repo) DULU. `autostart.sh` dan
+`dwl.desktop` sudah di-symlink lewat `make link` (`dwl` ada di `DIRS`), jadi
+tak ada langkah salin untuk keduanya. Beda: `config.h` **dan `config.mk`** harus
+disalin ke `~/Dokumen/dwl/` lalu **recompile** tiap ubah — symlink tak dipakai
+untuk dua file ini sebab `~/Dokumen/dwl` adalah clone git upstream.
+
+**`autostart.sh` WAJIB executable (`100755`).** dwl menjalankannya lewat
+`/bin/sh -c '~/.config/dwl/autostart.sh'`, jadi bit exec hilang = sh gagal exec
+(`Permission denied`) dan script mati **sebelum baris pertama** — swaybg, sfwbar,
+xremap, mako, dan loop OSD semuanya tak start, tanpa pesan error di mana pun.
+Gejalanya persis "wallpaper dan bar tak muncul, tapi fuzzel bisa". Kalau bit-nya
+lepas: `git add --chmod=+x config/dwl/autostart.sh` (git menyimpan mode, `chmod`
+saja tak cukup untuk clone berikutnya).
 
 ---
 
@@ -231,6 +300,22 @@ dipasang `sudo make install` ke `/usr/local/bin/`. Tak ada paket Fedora.
   Hyprland siap dulu, anti-race saat login SDDM).
 - Verifikasi: `pgrep -x snappy-switcher`, `hyprctl binds | grep -A2 snappy`.
 
+## Notifikasi — mako (dipakai ketiga compositor)
+
+`config/mako/config`, paket Fedora `mako`. Dipilih ketimbang SwayNotificationCenter
+sebab ringan dan config-nya sekelas foot/fuzzel (ini, bukan CSS GTK). Konsekuensi:
+**tak ada panel riwayat/Notification Center** — cuma toast + `makoctl restore`.
+
+- Jalan lewat `wlr-layer-shell`, jadi tak butuh IPC compositor apa pun (beda dgn
+  snappy-switcher). Autostart di ketiga file: `labwc/autostart`, `dwl/autostart.sh`,
+  `hypr/hyprland.conf`.
+- `layer=overlay` supaya toast tetap muncul di atas window fullscreen.
+- `margin=34,14` — 34 = tinggi sfwbar (`min-height: 24px` + padding) + jarak, jadi
+  toast tak menutupi menu-bar. **Kalau tinggi sfwbar diubah, ubah angka ini juga.**
+- Keybind pakai `Ctrl+Super+n/d` (+Shift) — `Super+n`/`Super+d` polos dimakan xremap.
+- Reload setelah edit: `makoctl reload` (tak perlu restart sesi; config = symlink).
+- dwl: keybind ada di `config.h` → **wajib recompile**, tak seperti dua lainnya.
+
 ## Catatan integrasi
 - **xremap**: paket terpasang = `xremap-wlroots`. Tetap jalan di Hyprland karena
   Hyprland implement `wlr-foreign-toplevel-management` → deteksi app (blok `foot`)
@@ -267,8 +352,13 @@ Aturan yang mudah dilanggar:
 - **`button` tak bisa menampilkan teks** — `value` pada button = nama ikon/file
   gambar, jadi glyph nerd-font muncul sebagai ikon fallback "sfw". Pakai `label`
   (label tetap dukung `action`).
-- **`ExecClient` tak lewat shell** (beda dgn action `Exec` yang lewat shell), jadi
-  `$HOME` tak diekspansi. Wajib dibungkus: `ExecClient("sh -c 'exec $HOME/…'", "ws")`.
+- **TAK ADA yang lewat shell — `ExecClient` MAUPUN action `Exec`.** sfwbar
+  1.0~beta16.1 fork+`execvp` argv hasil parse sendiri (biner tak memuat string
+  `/bin/sh`; diverifikasi lewat TriggerAction: `Exec "$HOME/x.sh"` tak jalan,
+  `Exec "/home/rjial/x.sh"` dan `Exec "sh -c '$HOME/x.sh'"` jalan). `$HOME`
+  ditelan mentah dan spawn **gagal diam-diam** — klik nol reaksi, nol pesan
+  error. Wajib dibungkus di keduanya: `Exec "sh -c 'exec $HOME/…'"`.
+  (Catatan lama yang bilang `Exec` lewat shell: SALAH, sudah diralat.)
 - **Nama style dari expression, bukan class** — `style = If(WsActive=1,"ws_on","ws_off")`
   plus `trigger = "ws"` di tiap label. CSS pakai `#ws_on` / `#ws_off`.
 - Nama style tombol taskbar = `#taskbar_item` dgn class `.active`. Bukan
@@ -279,11 +369,150 @@ Aturan yang mudah dilanggar:
   nomor sama, kalau tidak highlight melenceng. `wsctl set` di labwc butuh
   **wtype** (`sudo dnf install wtype`) sebab labwc tak punya IPC perintah —
   script mensintesis Super+N supaya keybind rc.xml yang bekerja.
-- dwl belum didukung `wsctl` (tags, bukan workspace). Butuh dwlb.
+- dwl **sudah didukung** `wsctl` (sejak perbaikan pager): jalurnya sama dgn labwc
+  (state file + wtype), tapi sumber `mark`-nya loop stdin `dwl/autostart.sh` —
+  loop yang sama yang memberi makan OSD tag. Keduanya hidup berdampingan, OSD
+  bukan pengganti pager lagi. `WS_COUNT` jadi dict per-WM (dwl 9, sisanya 8);
+  pager punya 8 label, jadi tag 9 dwl dicatat tapi tak ada label menyala.
+  Toggleview (>1 tag menyala) ditandai sebagai tag terendah.
+- **`XDG_CURRENT_DESKTOP` tak bisa dipercaya** — dwl tak menyetelnya sama sekali,
+  sesi dari TTY juga tidak. `compositor()` punya fallback `pgrep -x` untuk
+  Hyprland/labwc/dwl; tanpa itu semua jalur balik "unknown" dan pager mati diam.
+- Tombol power `󰐥` = `label` dgn `action = Exec "sh -c 'exec $HOME/…/powermenu'"`,
+  style `#power_btn`. Kena aturan `button`-vs-`label` DAN aturan tanpa-shell di atas.
+
+## Power menu — `config/scripts/powermenu` (ketiga compositor)
+
+`Ctrl+Super+Q` di ketiga WM. Frontend `fuzzel --dmenu`, jadi tema ikut
+`config/fuzzel/fuzzel.ini` — nol CSS/paket UI tambahan. Jalur lain ke menu yang
+sama: tombol sfwbar, dan submenu Power di `labwc/menu.xml`.
+
+Keputusan desain yang jangan dibalik saat refactor:
+- **Log Out = `loginctl terminate-session`, BUKAN aksi exit per-WM.** labwc tak
+  punya CLI exit dan dwl tak punya IPC sama sekali, jadi logind satu-satunya
+  jalur seragam. Ia juga menutup sesi logind dengan benar — `Exit` labwc dan
+  `$mod SHIFT Q` Hyprland cuma membunuh compositor. Keduanya sengaja tetap ada.
+- **`Ctrl+Super+Q`, bukan `Super+Q`** — `Super+Q` polos sudah close window di
+  ketiganya. `q` sendiri tidak dimakan xremap, dan `Ctrl+Super+*` selalu lolos
+  (xremap exact-match modifier).
+- **Konfirmasi kedua** untuk Log Out/Reboot/Shut Down, `Cancel` ditaruh PERTAMA
+  supaya itu yang ter-highlight. Submenu labwc/menu.xml TAK punya konfirmasi —
+  menu Openbox tak bisa berantai prompt; itu diketahui, bukan kelalaian.
+- `poweroff`/`reboot`/`suspend` **tak butuh sudo** (logind + polkit, `lxpolkit`
+  sudah autostart). Jangan tambahkan `pkexec`/`sudo`.
+- **swaylock Fedora = upstream, BUKAN swaylock-effects.** `screenshots`,
+  `effect-blur`, `effect-pixelate` TIDAK ADA — memasukkannya ke
+  `config/swaylock/config` membuat swaylock gagal start dan layar TAK terkunci.
+- Glyph di menu sudah diverifikasi ada di `Symbols Nerd Font` yang terpasang.
+  Sebelum menukar glyph, cek dgn **`fc-list ":charset=<codepoint>" family`**,
+  BUKAN `fc-match`. `fc-match` cuma memberi font peringkat teratas: untuk F0CA8
+  ia menjawab `Jomolhari` walau Symbols Nerd Font juga punya glyph itu.
+  (Catatan lama yang bilang F0CA8/F0CAC "tak terpasang": SALAH, sudah diralat —
+  seri `md-numeric_N_circle` lengkap 1-9 di F0CA0 + 2*(N-1), dipakai pager 1-8.)
+
+## OSD — `config/scripts/osd` + blok `[category=osd]` mako
+
+Renderer generik. Slot terpakai: `tag` (dwl saja, dari `osd-dwl-tag`), `volume`
+dan `brightness` (ketiga WM, dari `volumectl`/`brightctl`).
+
+- `osd <slot> <text> [percent]` — argumen ketiga opsional dikirim sebagai hint
+  `int:value:N` dan membuat mako mengecat **progress bar** (mako(5): hint `value`
+  0-100). Bar itu = latar toast yang terisi sebagian (`progress-color=over` di
+  blok `[category=osd]`), BUKAN widget terpisah — jadi warnanya harus tipis, teal
+  penuh membuat teks tak terbaca. `source` (ganti `over`) akan mengganti
+  background dan merusak transparansi.
+- Nilai di luar 0-100 **diabaikan mako** (bar hilang diam-diam, bukan error) —
+  itu sebabnya `osd` meng-clamp sendiri.
+- **`notify-send -r <id>` TIDAK bekerja di mako** untuk anti-tumpuk. mako
+  menetapkan id sendiri dan mengabaikan `replaces_id` yang tak cocok, jadi id
+  hardcode selalu membuat toast baru (diuji: 4 kirim = 4 toast). Yang benar =
+  hint `x-canonical-private-synchronous` (diuji: 4 kirim = 1 toast).
+- **JANGAN tambah `max-visible` ke blok criteria** — mako menolak dgn
+  "Setting `max_visible` is allowed only for `output` and/or `anchor`" dan
+  **seluruh file gagal di-parse**, jadi semua styling mako hilang.
+- Timeout OSD hidup di `default-timeout` blok mako, bukan `-t` di script — satu
+  tempat saja. `history=0` supaya OSD tak memenuhi `makoctl restore`.
+- **Blok `[mode=do-not-disturb]` harus tetap paling bawah** — criteria mako
+  dievaluasi berurutan, jadi DND harus menang atas `[category=osd]`.
+- Validasi config tanpa mengganggu mako yang jalan:
+  `mako -c <file>` (akan gagal di DBus, tapi parse error tercetak dgn jelas).
+
+## Volume & brightness OSD — `volumectl` / `brightctl` (ketiga compositor)
+
+Keybind `XF86Audio*` / `XF86MonBrightness*` di ketiga WM memanggil wrapper ini,
+BUKAN `wpctl`/`brightnessctl` langsung. Balik ke pemanggilan langsung = OSD hilang.
+
+- **Selalu BACA ULANG nilai sesudah aksi**, jangan hitung "lama ± step": wpctl
+  meng-clamp di 0% dan di limit, brightnessctl di min/max — tebakan melenceng di
+  kedua ujung. `wpctl get-volume` / `brightnessctl -m i` yang jadi sumber angka.
+- **`wpctl set-volume -l 1.0` wajib** — wpctl tak punya batas atas sendiri; tanpa
+  limit, spam volume-up terus menaikkan gain di atas 100% (software boost, mulai
+  distorsi) dan angkanya melewati 100 (hint `value` mako cuma sah 0-100).
+- **`brightnessctl -n1` HARUS menempel, bukan `-n 1`** — argumen `-n` bersifat
+  opsional di getopt-nya, jadi bentuk terpisah membuat "1" lepas jadi argumen
+  posisi dan dibaca sebagai *operation*: perintah berubah jadi "tampilkan info",
+  brightness TAK berubah, **exit code tetap 0, tanpa pesan error**. Diuji:
+  `-n 1 set 5%-` nilai tetap 100%; `-n1 set 5%-` turun ke 95%.
+- **brightnessctl di mesin ini tak butuh sudo** walau user bukan anggota grup
+  `video` dan sysfs milik root: binary Fedora di-build dgn dukungan logind
+  (`strings` memuat `org.freedesktop.login1.Session`) jadi menulis lewat D-Bus
+  `SetBrightness` sesi aktif. Konsekuensi: **gagal dari SSH** (bukan sesi aktif).
+  Jangan "perbaiki" dgn `sudo`/`pkexec`/udev rule.
+- **`export LC_ALL=C`** di kedua script — wpctl mencetak `Volume: 0.77` dan awk
+  di locale id_ID membaca `0,77` sebagai 0, jadi OSD selalu 0%.
+- Glyph terverifikasi (`fc-match ":charset=<cp>"`): volume F057E/F0580/F057F,
+  mute F075F, mik F036C/F036D, brightness **F00E0 saja**. Seri nf-md-brightness
+  lain (F00DB–F00DF) TIDAK terpasang (jatuh ke Jomolhari) — itu sebabnya
+  brightness tak punya gradasi glyph terang/redup seperti volume.
+- Mute dan mik dikirim **tanpa argumen persen** — state on/off; bar 0% akan
+  tampak seperti volume 0 padahal nilainya masih tersimpan.
+- dwl: keybind ada di `config.h` → **wajib salin ke `~/Dokumen/dwl` + recompile**.
+  labwc `--reconfigure`, Hyprland auto-reload.
+- Nama file `brightctl`, bukan `brightnessctl`, supaya tak menutupi binary asli
+  kalau `~/.config/scripts` pernah masuk PATH.
+
+## XDG autostart — `config/scripts/xdg-autostart` (ketiga compositor)
+
+Peluncur entri `.desktop` dari `~/.config/autostart` + `/etc/xdg/autostart`.
+Dipanggil **paling akhir** di blok autostart ketiga WM (`labwc/autostart`,
+`dwl/autostart.sh`, `hypr/hyprland.conf`) supaya 5 daemon repo sudah hidup dulu.
+Sebelum ini 39 entri `.desktop` di mesin tak pernah dieksekusi sama sekali.
+
+Kenapa script sendiri: **`dex` tak ada di repo Fedora**, dan systemd
+`xdg-desktop-autostart.target` punya `RefuseManualStart=yes` (butuh target sesi
+sendiri + `import-environment`). Jangan "perbaiki" dgn mengganti ke salah satu
+dari keduanya tanpa alasan baru.
+
+Aturan yang mudah dilanggar:
+- **Hanya grup `[Desktop Entry]` yang dibaca.** Banyak entri (mis. `slack.desktop`)
+  punya grup `[Desktop Action …]` dengan `Exec=` sendiri; `grep '^Exec='` polos
+  akan meluncurkan aksi yang salah. Itu sebabnya `get_key()` memakai awk dgn
+  penanda grup.
+- **`sh -c "exec $cmd"`, bukan `sh -c "$cmd"`.** Tanpa `exec`, `$!` mencatat PID
+  shell dan program aslinya jadi anaknya — `-k` membunuh shell saja dan
+  meninggalkan proses yatim (diuji: 1 `sleep` tersisa).
+- **JANGAN `setsid`/`nohup`.** Itu persis penyebab helper nyangkut lintas sesi
+  (lihat blok `pkill` di `dwl/autostart.sh`). PID dicatat ke
+  `$XDG_RUNTIME_DIR/xdg-autostart.pids` dan dibunuh di awal run berikutnya —
+  pembunuhan dilakukan SEBELUM peluncuran, kalau tidak PID baru bisa kebetulan
+  sama dgn PID lama yang sudah mati.
+- **Iterasi direktori tak boleh lewat pipe** (`printf | while read`) — subshell
+  membuat variabel dedupe `seen` hilang tiap iterasi, dan entri user berhenti
+  menimpa entri sistem bernama sama.
+- Field code (`%U %f %i …`) wajib dibuang dari `Exec`; `slack.desktop` memakai
+  `%U` dan akan menerima literal `%U` sebagai URL.
+- `XDG_CURRENT_DESKTOP` di dwl di-set **inline** di baris pemanggilan, bukan
+  `export` — sesi dwl sengaja tetap tak punya variabel itu (fallback `pgrep` di
+  `sfwbar/wsctl` dan pemilihan backend `xdg-desktop-portal` bergantung padanya).
+- `lxpolkit.desktop` punya `OnlyShowIn=LXDE;` → tak akan dobel dgn `lxpolkit`
+  hardcode. Jangan tambahkan penanganan khusus untuk itu.
+- Sumber kebenaran daftar buang = `config/scripts/xdg-autostart.skip`
+  (**skip**-list, bukan allowlist — supaya paket baru otomatis jalan). Verifikasi
+  perubahan dgn `xdg-autostart -n` sebelum relog; `-n` sengaja tanpa efek samping.
 
 ## Portabilitas monitor (JANGAN hardcode nama output)
 `monitor = , preferred, auto, 1` = catch-all, cocok untuk output apa pun. Workspace
-persistent 1-4 sengaja TANPA field `monitor:` supaya ikut display mana pun —
+persistent 1-8 sengaja TANPA field `monitor:` supaya ikut display mana pun —
 `workspace = N, persistent:true` (sudah diverifikasi jalan tanpa `monitor:`).
 Override per-mesin masuk `~/.config/hypr/local.conf` (di-`source` paling bawah
 `hyprland.conf`, dibuat otomatis oleh `make link`, di-gitignore). Kalau user minta

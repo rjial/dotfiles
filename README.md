@@ -27,12 +27,21 @@ config/
   labwc/menu.xml       # right-click root menu
   labwc/labwc.desktop  # SDDM session entry
   dwl/config.h         # dwl keybinds/appearance (compiled in)
-  dwl/autostart.sh     # dwl startup (dwl -s ...)
+  dwl/autostart.sh     # dwl startup (dwl -s ...) + tag OSD stdin loop
   dwl/dwl.desktop      # SDDM session entry
   hypr/hyprland.conf   # Hyprland: keybinds + env + autostart + effects (one file)
+  mako/config          # notification daemon (toast top-right + OSD) — SHARED
+  scripts/powermenu    # power menu via fuzzel (lock/logout/suspend/…) — SHARED
+  scripts/osd          # generic OSD renderer via mako — SHARED
+  scripts/osd-dwl-tag  # dwl tag bitmask -> OSD text (dwl only)
+  scripts/volumectl    # volume/mute via wpctl + OSD — SHARED
+  scripts/brightctl    # backlight via brightnessctl + OSD — SHARED
+  scripts/xdg-autostart      # run XDG .desktop autostart entries — SHARED
+  scripts/xdg-autostart.skip # entries that must NOT run
+  swaylock/config      # lock screen theme — SHARED
   foot/foot.ini        # terminal font/theme
   fuzzel/fuzzel.ini    # launcher look
-  sfwbar/sfwbar.config # top menu-bar (launcher + taskbar + clock + status)
+  sfwbar/sfwbar.config # top menu-bar (launcher + taskbar + clock + status + power)
   snappy-switcher/     # Alt+Tab overlay switcher (Hyprland only)
   waypaper/            # wallpaper picker (config.ini is git-ignored = state)
 Makefile               # symlink manager (config/* -> ~/.config/*)
@@ -44,7 +53,7 @@ CLAUDE.md              # deploy/architecture notes
 
 ```bash
 # base — all in Fedora repos
-sudo dnf install labwc fuzzel foot grim slurp swaybg wl-clipboard sfwbar waypaper
+sudo dnf install labwc fuzzel foot grim slurp swaybg wl-clipboard sfwbar waypaper mako swaylock
 
 # Hyprland session (optional — see step 6)
 sudo dnf install hyprland xdg-desktop-portal-hyprland brightnessctl
@@ -137,10 +146,16 @@ make CC=clang \
 sudo make install
 
 # autostart + SDDM session
-mkdir -p ~/.config/dwl && cp ~/.dotfiles/config/dwl/autostart.sh ~/.config/dwl/
-chmod +x ~/.config/dwl/autostart.sh
+make link          # symlinks config/dwl -> ~/.config/dwl (autostart.sh lives there)
 sudo cp ~/.dotfiles/config/dwl/dwl.desktop /usr/share/wayland-sessions/
 ```
+
+> `~/.config/dwl` is a **symlink** (`dwl` is in the Makefile's `DIRS`), so editing
+> `config/dwl/autostart.sh` in the repo takes effect on the next session with no
+> copy step. `config.h` is the exception — it must still be copied to
+> `~/Dokumen/dwl/` and recompiled. Copying `autostart.sh` by hand instead is how
+> it silently went stale before: the repo gained `mako &` but the running session
+> never saw it.
 
 Log out → pick **dwl** in SDDM. Switch back to **labwc** anytime from the same
 session menu.
@@ -264,6 +279,90 @@ Changing the glyphs means editing three files: `labwc/rc.xml`
 (`<desktops><names>`), `hypr/hyprland.conf` (`defaultName:`), and
 `sfwbar/sfwbar.config` (the label `value`s).
 
+**dwl uses an OSD instead of the pager.** Since `wsctl` cannot support tags, the
+dwl session shows a brief centred toast (`󰓩 Tag 3`) on every tag change, driven
+by a stdin loop at the bottom of `config/dwl/autostart.sh` reading dwl's own
+status output. It needs no recompile and no bar. Details:
+[KEYMAP.en.md → Tag OSD](KEYMAP.en.md#tag-osd-dwl-only).
+
+## Volume & brightness OSD
+
+The `XF86Audio*` / `XF86MonBrightness*` keys in all three sessions call
+`config/scripts/volumectl` and `config/scripts/brightctl` instead of `wpctl` /
+`brightnessctl` directly. Each wrapper performs the change, **re-reads** the
+resulting value (never guesses old ± step — the value is clamped at both ends),
+and renders a centred OSD via `config/scripts/osd`: glyph + percent + a progress
+bar. The bar is mako's `value` hint filling the toast background
+(`progress-color=over` in the `[category=osd]` block), not a separate widget.
+
+Guard rails baked in: volume caps at 100% (`wpctl -l 1.0`, otherwise repeated
+volume-up keeps boosting gain past 100% into distortion) and brightness has a
+floor of raw value 1 (`brightnessctl -n1`, otherwise the screen can go fully dark
+with no way to see it back up). `brightnessctl` needs no sudo here — the Fedora
+build talks to logind's `SetBrightness` D-Bus method, which also means it only
+works from the active graphical session.
+
+> Gotcha: `brightnessctl -n 1` (with a space) silently does nothing — `-n` takes
+> an *optional* argument, so the detached `1` is parsed as the operation and the
+> command degrades into "print info", exit code 0. It must be `-n1`.
+
+## XDG autostart
+
+None of the three compositors process `.desktop` autostart entries on their own,
+so `~/.config/autostart` and `/etc/xdg/autostart` used to be dead files —
+`nm-applet`, `blueman`, `spice-vdagent` and Slack never started.
+`config/scripts/xdg-autostart` is a ~100-line POSIX shell parser called last from
+each session's autostart block (`labwc/autostart`, `dwl/autostart.sh`,
+`hypr/hyprland.conf`), after the five hardcoded daemons are already up.
+
+`dex` is not packaged for Fedora, and systemd's `xdg-desktop-autostart.target`
+carries `RefuseManualStart=yes` (it needs a session target plus
+`import-environment` to be usable) — hence the small script.
+
+It honours `Hidden`, `X-GNOME-Autostart-enabled`, `TryExec`, `OnlyShowIn` /
+`NotShowIn` (matched against `XDG_CURRENT_DESKTOP`), reads only the
+`[Desktop Entry]` group, strips `%U`-style field codes, and lets a user entry
+override a system entry of the same basename.
+
+```bash
+~/.config/scripts/xdg-autostart -n   # dry run: what starts, and why the rest doesn't
+~/.config/scripts/xdg-autostart      # (re)launch everything
+~/.config/scripts/xdg-autostart -k   # kill what the last run started
+```
+
+On this machine 7 entries start: `blueman-applet`, `nm-applet`,
+`spice-vdagent`, `xdg-user-dirs-update`, `abrt-applet`, `geoclue-demo-agent`,
+`slack`. `OnlyShowIn` alone drops the whole Plasma/XFCE/GNOME stack; the
+remaining noise (KDE daemons that forgot to set `OnlyShowIn`, VM guest tools,
+the live-installer setup) is listed in `config/scripts/xdg-autostart.skip`.
+It is a **skip**-list, not an allowlist, so a newly installed package's tray
+applet works without editing anything. Delete a line to re-enable an entry.
+
+> Launched PIDs are recorded in `$XDG_RUNTIME_DIR/xdg-autostart.pids` and killed
+> at the start of the next run, so a second login without a reboot does not leave
+> two `nm-applet`s fighting over the tray. The command is run as
+> `sh -c "exec …"` — without `exec` the recorded PID is the shell's, and killing
+> it leaves the real process orphaned.
+
+## Power menu
+
+`Ctrl+Cmd+Q` in all three sessions opens `config/scripts/powermenu` — a
+`fuzzel --dmenu` list: Lock, Log Out, Suspend, Reboot, Shut Down. The three
+session-ending entries require a second confirmation with `Cancel` preselected.
+Also reachable from the `󰐥` button at the right end of sfwbar and from labwc's
+right-click **Power** submenu (that route has no confirmation).
+
+Log Out runs `loginctl terminate-session`, not a per-WM exit action: labwc has no
+exit CLI and dwl has no IPC, so logind is the only uniform path — and unlike
+labwc's `Exit` or Hyprland's `Super+Shift+Q`, it actually closes the logind
+session instead of just killing the compositor. `poweroff`/`reboot`/`suspend`
+need no sudo (logind + polkit, with `lxpolkit` already autostarted).
+
+> Gotcha: the Fedora package is **upstream** swaylock, not swaylock-effects, so
+> `screenshots` / `effect-blur` do not exist. Putting them in
+> `config/swaylock/config` makes swaylock fail to start — leaving the screen
+> unlocked.
+
 ## Theming (labwc window decorations)
 
 labwc uses Openbox-style themes (`themerc`). This repo ships **CatppuccinFrappe**
@@ -289,3 +388,55 @@ labwc uses Openbox-style themes (`themerc`). This repo ships **CatppuccinFrappe*
   with move-to-tag. labwc and Hyprland keep the full mac set.
 - **No minimize on Hyprland** — the compositor has no iconify; `Super+M/H` parks
   the window on the `special:minimized` workspace instead.
+
+## Troubleshooting
+
+### Session goes unresponsive after being left alone (clicks stop registering)
+
+Not a compositor bug — on Fedora it is almost always **`plasma-drkonqi`'s coredump
+handler in a self-feeding crash loop**. Some app crashes (here: `vicinae`),
+`drkonqi-coredump-processor@` fires, `drkonqi-coredump-launcher` *itself*
+segfaults, its own coredump re-triggers the processor, and it never stops. Measured
+on this machine: **14,219 launcher segfaults in 3 hours** (~1.3/s), `systemd --user`
+burning 40+ minutes of CPU, 87 failed `drkonqi-coredump-processor@*` units. The
+compositor's event loop starves and input queues up:
+
+```
+[libinput] client bug: event processing lagging behind by 72ms, your system is too slow
+```
+
+drkonqi is a KDE component and does nothing in a labwc/dwl/Hyprland session. Check
+and kill it:
+
+```bash
+coredumpctl list --no-pager --since "-1 hour" | awk '{print $NF}' | sort | uniq -c | sort -rn
+sudo systemctl mask drkonqi-coredump-processor@.service
+sudo systemctl reset-failed 'drkonqi-coredump-processor@*'
+# the user-side units too (mask on disk works even when the user bus is wedged):
+for u in drkonqi-coredump-launcher.socket drkonqi-coredump-pickup.service \
+         drkonqi-coredump-cleanup.timer drkonqi-sentry-postman.path \
+         drkonqi-sentry-postman.timer; do
+  ln -sfn /dev/null ~/.config/systemd/user/$u
+done
+```
+
+Once the loop has run for a while `systemctl --user` may answer *"Transport
+endpoint is not connected"* — the user manager is buried. Masking on disk (above)
+sidesteps the bus; it applies at next login. Also check `df -h /`: the storm plus
+journal growth can push the root filesystem to 99%, which stalls everything on its
+own.
+
+### Duplicate helpers leaking across sessions
+
+`xremap`, `sfwbar`, and `wsctl watch` are backgrounded from the autostart scripts,
+so they reparent to PID 1 and can **survive a logout**. Logging into a second
+session then leaves two of each — visible as two virtual keyboards:
+
+```bash
+grep 'Name="xremap' /proc/bus/input/devices   # expect exactly one
+pgrep -a xremap                               # expect exactly one
+```
+
+Two `xremap` instances both try to `EVIOCGRAB` the same keyboard and mouse; only
+one wins and the loser retries, so remaps and clicks get erratic. Kill the older
+PID (compare `ps -o pid,lstart` against the compositor's own start time).

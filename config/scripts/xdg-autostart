@@ -1,0 +1,205 @@
+#!/bin/sh
+# xdg-autostart — jalankan entri XDG autostart (.desktop) di sesi wlroots.
+#
+# usage: xdg-autostart [-n] [-k]
+#        -n  dry run: cetak apa yang akan jalan + alasan skip, tak meluncurkan
+#        -k  bunuh proses hasil run sebelumnya, lalu keluar
+#
+# Dipanggil paling akhir dari blok autostart ketiga compositor (labwc/autostart,
+# dwl/autostart.sh, hypr/hyprland.conf) — supaya 5 daemon repo (xremap, sfwbar,
+# mako, waypaper, lxpolkit) sudah jalan duluan.
+#
+# KENAPA SCRIPT SENDIRI:
+# labwc/dwl/Hyprland tak satu pun memproses .desktop autostart, jadi nm-applet,
+# blueman, spice-vdagent, dan slack tak pernah hidup. `dex` (peluncur XDG yang
+# biasa dipakai) TIDAK ADA di repo Fedora, dan systemd
+# `xdg-desktop-autostart.target` punya `RefuseManualStart=yes` sehingga butuh
+# unit sesi sendiri + import-environment. Parser 100 baris ini lebih murah.
+#
+# KENAPA ADA SKIP-LIST:
+# 19 entri di mesin ini lolos filter OnlyShowIn dan binernya semua terpasang —
+# termasuk daemon KDE yang lupa memasang OnlyShowIn (kdeconnectd, pam_kwallet_init)
+# dan sisa VM guest tools. Filter "biner ada atau tidak" tak menolong sama sekali.
+# Dipakai skip-list, bukan allowlist, supaya paket baru tetap otomatis jalan.
+
+set -u
+
+SKIP_FILE="$(dirname "$0")/xdg-autostart.skip"
+PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/xdg-autostart.pids"
+
+dry=0
+killonly=0
+while [ $# -gt 0 ]; do
+	case $1 in
+	-n) dry=1 ;;
+	-k) killonly=1 ;;
+	*)
+		echo "usage: ${0##*/} [-n] [-k]" >&2
+		exit 2
+		;;
+	esac
+	shift
+done
+
+# --- Bunuh proses sisa run sebelumnya ----------------------------------------
+# Sesi kedua tanpa reboot akan meluncurkan nm-applet/blueman kedua kalau tak
+# dibersihkan — masalah yang sama dengan blok pkill di dwl/autostart.sh:21-23.
+# PID diverifikasi lewat /proc supaya PID yang sudah didaur-ulang kernel untuk
+# proses lain tidak ikut kena.
+kill_previous() {
+	[ -f "$PIDFILE" ] || return 0
+	while read -r pid _rest; do
+		case $pid in
+		'' | *[!0-9]*) continue ;;
+		esac
+		[ -d "/proc/$pid" ] && kill "$pid" 2>/dev/null
+	done <"$PIDFILE"
+	rm -f "$PIDFILE"
+}
+
+if [ "$killonly" = 1 ]; then
+	kill_previous
+	exit 0
+fi
+
+# Dibunuh SEBELUM meluncurkan apa pun: kalau ditunda sampai sesudah, PID baru
+# bisa kebetulan sama dengan PID lama yang sudah mati dan ikut terbunuh.
+# `-n` tak boleh punya efek samping, jadi dilewati saat dry run.
+[ "$dry" = 0 ] && kill_previous
+
+# --- Skip-list ---------------------------------------------------------------
+# Dibaca sekali ke satu string ber-spasi; nama disimpan tanpa akhiran .desktop
+# supaya kedua bentuk penulisan di file skip sama-sama diterima.
+SKIP=' '
+if [ -f "$SKIP_FILE" ]; then
+	while IFS= read -r line; do
+		line=${line%%#*}
+		line=$(printf '%s' "$line" | tr -d ' \t')
+		[ -n "$line" ] || continue
+		SKIP="$SKIP${line%.desktop} "
+	done <"$SKIP_FILE"
+fi
+
+is_skipped() { case $SKIP in *" $1 "*) return 0 ;; esac; return 1; }
+
+# --- Filter OnlyShowIn / NotShowIn -------------------------------------------
+# XDG_CURRENT_DESKTOP dipisah ':', OnlyShowIn/NotShowIn dipisah ';'.
+# Spec: XDG_CURRENT_DESKTOP kosong -> OnlyShowIn tak pernah cocok (entri di-skip),
+# NotShowIn tak pernah cocok (entri jalan).
+shows_in() {
+	list=$1
+	IFS=';'
+	for want in $list; do
+		[ -n "$want" ] || continue
+		IFS=':'
+		for have in ${XDG_CURRENT_DESKTOP:-}; do
+			[ "$want" = "$have" ] && { unset IFS; return 0; }
+		done
+		IFS=';'
+	done
+	unset IFS
+	return 1
+}
+
+# --- Baca satu key dari grup [Desktop Entry] ---------------------------------
+# WAJIB berhenti di header grup berikutnya: entri seperti slack.desktop punya
+# grup [Desktop Action ...] dengan Exec= sendiri. Membaca sembarang Exec= akan
+# meluncurkan aksi yang salah ("Buka jendela baru", dsb).
+get_key() {
+	awk -v key="$2" '
+		/^\[/ { inentry = ($0 == "[Desktop Entry]"); next }
+		!inentry { next }
+		index($0, key "=") == 1 { sub(/^[^=]*=/, ""); print; exit }
+	' "$1"
+}
+
+: >"$PIDFILE.new"
+
+report() { [ "$dry" = 1 ] && printf '%-46s %s\n' "$1" "$2"; }
+
+# --- Pindai direktori sesuai XDG basedir spec --------------------------------
+# User dulu, baru sistem. Basename yang sama: kemunculan pertama menang, jadi
+# file di ~/.config/autostart menimpa /etc/xdg/autostart (perilaku spec).
+#
+# Daftar dir dirakit ke satu variabel ber-spasi lalu diiterasi dgn `for` biasa —
+# BUKAN `printf | while read`, sebab pipe menjalankan loop di subshell dan
+# variabel `seen` (dedupe basename) akan hilang di setiap iterasi.
+seen=' '
+DIRS="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
+IFS=':'
+for d in ${XDG_CONFIG_DIRS:-/etc/xdg}; do
+	[ -n "$d" ] && DIRS="$DIRS $d/autostart"
+done
+unset IFS
+
+for dir in $DIRS; do
+	[ -d "$dir" ] || continue
+	for f in "$dir"/*.desktop; do
+		[ -f "$f" ] || continue
+		base=${f##*/}
+		name=${base%.desktop}
+
+		case $seen in *" $name "*) continue ;; esac
+		seen="$seen$name "
+
+		is_skipped "$name" && { report "$name" "skip: skip-list"; continue; }
+
+		type=$(get_key "$f" Type)
+		[ "${type:-Application}" = Application ] ||
+			{ report "$name" "skip: Type=$type"; continue; }
+
+		[ "$(get_key "$f" Hidden)" = true ] &&
+			{ report "$name" "skip: Hidden=true"; continue; }
+
+		# Kunci GNOME, tapi dihormati juga oleh systemd-xdg-autostart-generator —
+		# dan dipakai ~/.config/autostart/sealertauto.desktop di mesin ini.
+		[ "$(get_key "$f" X-GNOME-Autostart-enabled)" = false ] &&
+			{ report "$name" "skip: X-GNOME-Autostart-enabled=false"; continue; }
+
+		try=$(get_key "$f" TryExec)
+		if [ -n "$try" ]; then
+			case $try in
+			/*) [ -x "$try" ] || { report "$name" "skip: TryExec"; continue; } ;;
+			*) command -v "$try" >/dev/null 2>&1 ||
+				{ report "$name" "skip: TryExec"; continue; } ;;
+			esac
+		fi
+
+		only=$(get_key "$f" OnlyShowIn)
+		[ -n "$only" ] && ! shows_in "$only" &&
+			{ report "$name" "skip: OnlyShowIn=$only"; continue; }
+
+		not=$(get_key "$f" NotShowIn)
+		[ -n "$not" ] && shows_in "$not" &&
+			{ report "$name" "skip: NotShowIn=$not"; continue; }
+
+		exec_line=$(get_key "$f" Exec)
+		[ -n "$exec_line" ] || { report "$name" "skip: Exec kosong"; continue; }
+
+		# Field code hanya sah di Exec dan tak boleh diteruskan ke program:
+		# slack.desktop memakai %U, tanpa ini Slack menerima literal "%U" sebagai URL.
+		cmd=$(printf '%s' "$exec_line" | sed 's/%[fFuUickdDnNvm]//g; s/%%/%/g')
+
+		if [ "$dry" = 1 ]; then
+			printf '%-46s %s\n' "$name" "JALAN: $cmd"
+			continue
+		fi
+
+		# JANGAN setsid/nohup: itu persis yang membuat helper nyangkut setelah
+		# logout (lihat catatan di dwl/autostart.sh). Proses biasa saja + pidfile.
+		#
+		# `exec` WAJIB: tanpa itu /bin/sh tetap hidup sebagai induk dan `$!`
+		# mencatat PID shell, bukan PID program. Membunuh shell tak membunuh
+		# anaknya — diuji: `-k` menyisakan proses yatim. Spec .desktop melarang
+		# metakarakter shell di Exec, jadi `exec` selalu aman di sini.
+		sh -c "exec $cmd" >/dev/null 2>&1 &
+		echo "$! $name" >>"$PIDFILE.new"
+	done
+done
+
+if [ "$dry" = 1 ]; then
+	rm -f "$PIDFILE.new"
+	exit 0
+fi
+
+mv "$PIDFILE.new" "$PIDFILE"

@@ -1,0 +1,105 @@
+#!/bin/sh
+# volumectl — ubah volume/mute lewat wpctl, lalu tampilkan OSD.
+#
+# usage: volumectl up|down|mute|mic-mute [step]
+#        step = persen, default 5.
+#
+# Dipanggil dari keybind XF86Audio* di ketiga compositor (labwc/rc.xml,
+# hypr/hyprland.conf, dwl/config.h) sebagai pengganti pemanggilan `wpctl`
+# langsung — supaya perubahan volume punya umpan balik visual.
+#
+# KENAPA `-l 1.0`:
+# `wpctl set-volume` TIDAK punya batas atas sendiri; tanpa limit, spam tombol
+# volume-up terus menaikkan gain di atas 100% (software boost, mulai distorsi).
+# `-l 1.0` menahan hasil akhir di 100% sekaligus membuat angka OSD tak pernah
+# melebihi 100 (hint `value` mako cuma sah 0-100).
+#
+# KENAPA BACA ULANG STATE, BUKAN HITUNG SENDIRI:
+# nilai sesudahnya di-clamp oleh wpctl (0% dan limit 1.0), jadi menebak
+# "lama ± step" akan melenceng di kedua ujung. `wpctl get-volume` selalu benar.
+
+set -u
+
+# wpctl mencetak "Volume: 0.77" — titik desimal. Locale id_ID akan membuat awk
+# membaca "0,77" sebagai 0 (dan `$2*100` jadi 0%). LC_ALL=C mengunci keduanya.
+export LC_ALL=C
+
+OSD="$(dirname "$0")/osd"
+SINK='@DEFAULT_AUDIO_SINK@'
+SOURCE='@DEFAULT_AUDIO_SOURCE@'
+
+# Glyph sudah diverifikasi ada di `Symbols Nerd Font` yang terpasang
+# (fc-match ":charset=<cp>"): F057E, F0580, F057F, F075F, F036C, F036D.
+GLYPH_HIGH='󰕾'
+GLYPH_MED='󰖀'
+GLYPH_LOW='󰕿'
+GLYPH_MUTE='󰝟'
+GLYPH_MIC='󰍬'
+GLYPH_MIC_MUTE='󰍭'
+
+usage() {
+	echo "usage: ${0##*/} up|down|mute|mic-mute [step]" >&2
+	exit 2
+}
+
+# "Volume: 0.77 [MUTED]" -> "77 1" / "Volume: 0.77" -> "77 0"
+read_state() {
+	wpctl get-volume "$1" | awk '
+		{ muted = ($0 ~ /MUTED/) ? 1 : 0
+		  printf "%d %d\n", $2 * 100 + 0.5, muted }'
+}
+
+show_sink_osd() {
+	set -- $(read_state "$SINK")
+	vol=$1
+	muted=$2
+
+	if [ "$muted" = 1 ]; then
+		# Tanpa argumen persen: mute adalah state on/off, bar 0% akan tampak
+		# seperti volume 0 padahal nilainya tersimpan.
+		exec "$OSD" volume "$GLYPH_MUTE  Bisu"
+	fi
+
+	if [ "$vol" -ge 60 ]; then
+		glyph=$GLYPH_HIGH
+	elif [ "$vol" -ge 25 ]; then
+		glyph=$GLYPH_MED
+	else
+		glyph=$GLYPH_LOW
+	fi
+
+	exec "$OSD" volume "$glyph  $vol%" "$vol"
+}
+
+show_source_osd() {
+	set -- $(read_state "$SOURCE")
+	if [ "$2" = 1 ]; then
+		exec "$OSD" volume "$GLYPH_MIC_MUTE  Mik bisu"
+	fi
+	exec "$OSD" volume "$GLYPH_MIC  Mik aktif"
+}
+
+[ $# -ge 1 ] || usage
+step=${2:-5}
+
+case $1 in
+up)
+	wpctl set-volume -l 1.0 "$SINK" "$step%+" || exit 1
+	show_sink_osd
+	;;
+down)
+	wpctl set-volume -l 1.0 "$SINK" "$step%-" || exit 1
+	show_sink_osd
+	;;
+mute)
+	wpctl set-mute "$SINK" toggle || exit 1
+	show_sink_osd
+	;;
+mic-mute)
+	wpctl set-mute "$SOURCE" toggle || exit 1
+	show_source_osd
+	;;
+*)
+	usage
+	;;
+esac

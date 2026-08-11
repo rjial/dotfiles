@@ -1,0 +1,41 @@
+# xdg-autostart.skip — entri .desktop yang TIDAK boleh dijalankan.
+#
+# Satu basename per baris, boleh dgn atau tanpa akhiran `.desktop`.
+# `#` = komentar, baris kosong diabaikan.
+#
+# Ini skip-list, BUKAN allowlist: apa pun yang tak terdaftar di sini akan jalan
+# selama lolos filter OnlyShowIn/NotShowIn/TryExec/Hidden. Jadi paket baru yang
+# memasang applet tray otomatis hidup tanpa mengedit file ini.
+#
+# Mau menyalakan lagi salah satu di bawah? Hapus barisnya, lalu:
+#   ~/.config/scripts/xdg-autostart -n     # cek dulu
+#   ~/.config/scripts/xdg-autostart        # terapkan (relaunch semua entri)
+#
+# Cara alternatif yang tak menyentuh repo: taruh file dgn `Hidden=true` di
+# ~/.config/autostart/<nama>.desktop — itu mekanisme resmi spec XDG dan menang
+# atas /etc/xdg/autostart.
+
+# --- Stack KDE yang lupa memasang OnlyShowIn=KDE -----------------------------
+# Keempat entri ini tak punya OnlyShowIn sama sekali, jadi tanpa daftar ini
+# mereka ikut nyala di labwc/dwl/Hyprland walau tak ada Plasma.
+org.kde.kalendarac
+org.kde.kdeconnect.daemon
+org.kde.kunifiedpush-distributor
+org.kde.xwaylandvideobridge
+pam_kwallet_init
+
+# --- Guest tools VM: mesin ini bare metal ------------------------------------
+# Binernya terpasang (paket dependensi), tapi tak ada hypervisor-nya.
+vboxclient
+vmware-user
+
+# --- Sisa media instalasi ----------------------------------------------------
+# TryExec=/usr/bin/liveinst ada di sistem terpasang, jadi filter TryExec tak
+# membuangnya. Setup live-installer di sesi harian = tak ada gunanya.
+liveinst-setup
+
+# --- Lain-lain ---------------------------------------------------------------
+com.cloudflare.WarpTaskbar   # Cloudflare WARP tray, tak dipakai
+imsettings-start             # input method switcher; layout us tanpa IME
+sealertauto                  # SELinux troubleshooter tray; denial tetap ke journal
+remmina-applet               # entri user; buka Remmina manual saat perlu

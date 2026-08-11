@@ -1,5 +1,19 @@
 <?xml version="1.0"?>
 <openbox_menu>
+  <!-- Menu klik-kanan desktop labwc.
+
+       Submenu Power memanggil perintah yang sama dengan
+       config/scripts/powermenu (dipanggil juga lewat Ctrl+Super+Q), tapi TANPA
+       fuzzel: menu ini sudah punya UI-nya sendiri, jadi memanggil powermenu
+       dari sini akan memunculkan menu di atas menu.
+
+       Konsekuensi: tak ada langkah konfirmasi di jalur ini — powermenu punya
+       prompt kedua, submenu ini tidak (Openbox menu tak bisa berantai
+       konfirmasi). Aksi merusak dipisah oleh separator supaya tak salah klik.
+
+       "Exit labwc" berbeda dari "Log Out": Exit hanya membunuh compositor,
+       sedangkan Log Out menutup sesi logind dengan benar. Keduanya sengaja
+       dibiarkan ada, dgn label yang jelas supaya tak tertukar. -->
   <menu id="root-menu" label="labwc">
     <item label="Terminal">
       <action name="Execute" command="foot"/>
@@ -8,10 +22,29 @@
       <action name="Execute" command="fuzzel"/>
     </item>
     <separator/>
+    <menu id="power-menu" label="Power">
+      <item label="Lock">
+        <action name="Execute" command="swaylock -f"/>
+      </item>
+      <item label="Suspend">
+        <action name="Execute" command='sh -c "swaylock -f &amp;&amp; systemctl suspend"'/>
+      </item>
+      <separator/>
+      <item label="Log Out">
+        <action name="Execute" command='sh -c "loginctl terminate-session \"$XDG_SESSION_ID\""'/>
+      </item>
+      <item label="Reboot">
+        <action name="Execute" command="systemctl reboot"/>
+      </item>
+      <item label="Shut Down">
+        <action name="Execute" command="systemctl poweroff"/>
+      </item>
+    </menu>
+    <separator/>
     <item label="Reconfigure">
       <action name="Reconfigure"/>
     </item>
-    <item label="Exit">
+    <item label="Exit labwc">
       <action name="Exit"/>
     </item>
   </menu>

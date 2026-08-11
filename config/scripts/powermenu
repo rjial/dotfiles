@@ -1,0 +1,100 @@
+#!/bin/sh
+# powermenu — menu power lintas compositor (labwc / dwl / Hyprland).
+#
+# Frontend = `fuzzel --dmenu`, jadi tema Catppuccin Frappé ikut
+# config/fuzzel/fuzzel.ini otomatis — nol CSS/paket tambahan.
+#
+# Dipanggil dari:
+#   labwc     rc.xml   keybind C-W-q  + menu.xml submenu Power
+#   Hyprland  hyprland.conf  CTRL $mod Q
+#   dwl       config.h  MODKEY|CTRL + q   (butuh recompile)
+#   sfwbar    label 󰐥
+#
+# CATATAN DESAIN
+# - Log Out pakai `loginctl terminate-session`, BUKAN aksi exit per-WM. labwc
+#   tak punya CLI exit dan dwl tak punya IPC sama sekali, jadi logind adalah
+#   satu-satunya jalur yang seragam di tiga compositor. Ia juga menutup sesi
+#   dengan benar, bukan cuma membunuh compositor seperti `$mod SHIFT Q`.
+# - poweroff/reboot/suspend TIDAK butuh sudo: logind mengizinkannya untuk sesi
+#   aktif lewat polkit, dan lxpolkit sudah di-autostart di ketiga WM.
+# - Glyph di bawah sudah diverifikasi ada di `Symbols Nerd Font` (fontconfig
+#   fallback dari font fuzzel). Jangan tukar sembarang glyph tanpa cek
+#   `fc-match ":charset=<codepoint>"` — banyak codepoint nf-md tidak terpasang.
+
+set -u
+
+# --- helper ----------------------------------------------------------------
+
+menu() {
+	# $1 = prompt, $2 = jumlah baris
+	fuzzel --dmenu --prompt "$1 " --lines "$2" --width 22
+}
+
+# Konfirmasi untuk aksi yang mengakhiri sesi / mematikan mesin.
+# Cancel ditaruh PERTAMA supaya itulah yang ter-highlight saat menu terbuka —
+# satu Enter refleks tidak akan mematikan mesin. Esc (output kosong) = batal.
+confirm() {
+	# $1 = label aksi, $2 = prompt
+	ans=$(printf '%s\n' '󰜺  Cancel' "$1" | menu "$2" 2)
+	case $ans in
+	*Cancel* | '') return 1 ;;
+	*) return 0 ;;
+	esac
+}
+
+# XDG_SESSION_ID di-set pam_systemd di tiap sesi grafis. Fallback `show-session
+# auto` (terverifikasi bekerja di mesin ini; `self` mengembalikan kosong).
+session_id() {
+	if [ -n "${XDG_SESSION_ID:-}" ]; then
+		printf '%s' "$XDG_SESSION_ID"
+	else
+		loginctl show-session auto --property=Id --value 2>/dev/null
+	fi
+}
+
+lock() { swaylock -f; }
+
+logout() {
+	sid=$(session_id)
+	if [ -n "$sid" ]; then
+		loginctl terminate-session "$sid"
+	else
+		# Tak ada session id — jangan diam-diam gagal.
+		notify-send -u critical 'powermenu' 'Log out gagal: session id logind tak ditemukan'
+		return 1
+	fi
+}
+
+# --- menu ------------------------------------------------------------------
+
+sel=$(printf '%s\n' \
+	'󰌾  Lock' \
+	'󰗽  Log Out' \
+	'󰖔  Suspend' \
+	'󰜉  Reboot' \
+	'󰐥  Shut Down' |
+	menu 'Power' 5)
+
+case $sel in
+*Lock)
+	lock
+	;;
+*'Log Out')
+	confirm '󰗽  Log Out' 'Log out?' && logout
+	;;
+*Suspend)
+	# Lock dulu supaya layar terkunci saat bangun. `swaylock -f` daemonize,
+	# jadi ia kembali langsung dan suspend tetap jalan.
+	lock && systemctl suspend
+	;;
+*Reboot)
+	confirm '󰜉  Reboot' 'Reboot sekarang?' && systemctl reboot
+	;;
+*'Shut Down')
+	confirm '󰐥  Shut Down' 'Matikan mesin?' && systemctl poweroff
+	;;
+*)
+	# Esc / pilihan kosong — tak melakukan apa pun.
+	exit 0
+	;;
+esac

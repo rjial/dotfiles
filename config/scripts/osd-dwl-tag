@@ -1,0 +1,53 @@
+#!/bin/sh
+# osd-dwl-tag — bitmask tagset dwl -> teks OSD.
+#
+# Argumen = field <selected> dari baris status dwl:
+#   printf("%s tags %u %u %u %u\n", name, occ, m->tagset[m->seltags], sel, urg)
+#   (dwl.c:2120-2121)
+# Dipanggil dari loop stdin di config/dwl/autostart.sh.
+#
+# Kenapa tak ada glyph angka per-tag: seri nf-md numeric-box yang dipakai pager
+# sfwbar (U+F0CA0, F0CA2, F0CA4, F0CA6 untuk 1-4) TIDAK berlanjut dgn pola yang
+# sama — U+F0CA8 dan U+F0CAC tidak ada di `Symbols Nerd Font` yang terpasang
+# (dicek dgn `fc-match ":charset=<cp>"`). Jadi pakai satu glyph tag (U+F04E9)
+# + nomor sebagai teks. Ini juga sebabnya OSD memakai istilah "Tag", bukan
+# "Workspace": dwl punya 9 tag, bukan 4 workspace seperti labwc/Hyprland.
+
+set -u
+
+# Resolve `osd` sebagai sibling, bukan path ~/.config yang di-hardcode: script
+# ini jadi bisa diuji langsung dari repo, dan tetap benar saat dipanggil lewat
+# symlink ~/.config/scripts/ dari autostart.sh.
+OSD="$(dirname "$0")/osd"
+OSD_SLOT=tag
+GLYPH='󰓩'
+
+mask=${1:-}
+[ -n "$mask" ] || exit 0
+
+# TAGCOUNT (9) — config/dwl/config.h:31
+TAGS=9
+all=$(((1 << TAGS) - 1))
+
+# Super+0 = view {.ui = ~0} (config.h:142) -> semua bit set.
+if [ "$((mask & all))" = "$all" ]; then
+	exec "$OSD" "$OSD_SLOT" "$GLYPH  Semua tag"
+fi
+
+# Bisa lebih dari satu tag terpilih lewat Ctrl+Super+N (toggleview, config.h:90).
+n=1
+list=''
+while [ "$n" -le "$TAGS" ]; do
+	if [ "$(((mask >> (n - 1)) & 1))" = 1 ]; then
+		list="$list,$n"
+	fi
+	n=$((n + 1))
+done
+
+list=${list#,}
+
+# Tak ada tag terpilih (mask 0) — jangan tampilkan OSD kosong.
+[ -n "$list" ] || exit 0
+
+# Satu tag -> "Tag 3"; beberapa tag (toggleview) -> "Tag 1,3".
+exec "$OSD" "$OSD_SLOT" "$GLYPH  Tag $list"

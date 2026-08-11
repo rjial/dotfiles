@@ -1,0 +1,69 @@
+#!/bin/sh
+# osd — renderer OSD generik lewat mako.
+#
+# Sengaja TIDAK khusus workspace/tag supaya bisa dipakai ulang nanti
+# (volume, brightness, dsb.) tanpa menulis renderer kedua.
+#
+# usage: osd <slot> <text> [percent]
+#
+#   <slot> = nama grup anti-tumpuk. OSD dgn slot sama saling MENIMPA, jadi
+#   menekan tombol cepat berulang menghasilkan satu toast yang isinya berganti,
+#   bukan tumpukan toast. Slot berbeda = OSD berbeda:
+#       tag         (dipakai osd-dwl-tag)
+#       volume      (dipakai volumectl)
+#       brightness  (dipakai brightctl)
+#
+#   [percent] = 0-100 opsional. Dikirim sebagai hint `value`, yang membuat mako
+#   menggambar progress bar di dalam toast (mako(5): "Progress can be indicated
+#   in a notification by setting a hint, \"value\" to an integer between 0 and
+#   100 inclusive"). Warnanya dari `progress-color` blok [category=osd]. Tanpa
+#   argumen ini toast tampil tanpa bar — dipakai OSD tag dan state on/off
+#   (mute, mic) yang tak punya nilai kontinu.
+#
+# KENAPA PAKAI HINT, BUKAN `notify-send -r`:
+# `-r <id>` TIDAK bekerja di mako. mako menetapkan id notifikasi sendiri secara
+# berurutan dan mengabaikan replaces_id yang tak cocok dgn notifikasi yang ada,
+# jadi `-r 9001` yang di-hardcode selalu membuat toast baru — diuji: 4 kali
+# kirim = 4 toast menumpuk. `x-canonical-private-synchronous` didukung mako
+# (ada di binary-nya) dan menimpa dgn benar — diuji: 4 kali kirim = 1 toast.
+#
+# Dipasangkan dgn blok `[category=osd]` di config/mako/config yang menggeser
+# anchor ke tengah, memperpendek timeout, dan mematikan history. Kategori `osd`
+# di bawah HARUS sama dgn nama criteria itu.
+
+set -u
+
+[ $# -eq 2 ] || [ $# -eq 3 ] || {
+	echo "usage: ${0##*/} <slot> <text> [percent]" >&2
+	exit 2
+}
+
+slot=$1
+text=$2
+pct=${3:-}
+
+# Clamp: mako MENGABAIKAN hint `value` di luar 0-100, jadi nilai liar membuat bar
+# hilang diam-diam ketimbang memunculkan error.
+if [ -n "$pct" ]; then
+	case $pct in
+	'' | *[!0-9]*) pct=0 ;;
+	esac
+	[ "$pct" -le 100 ] || pct=100
+fi
+
+# -a osd juga di-set supaya toast mudah difilter per-app, walau criteria
+# mencocokkan lewat -c.
+if [ -n "$pct" ]; then
+	exec notify-send \
+		-a osd \
+		-c osd \
+		-h "string:x-canonical-private-synchronous:osd-$slot" \
+		-h "int:value:$pct" \
+		"$text"
+fi
+
+exec notify-send \
+	-a osd \
+	-c osd \
+	-h "string:x-canonical-private-synchronous:osd-$slot" \
+	"$text"

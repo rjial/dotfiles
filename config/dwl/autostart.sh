@@ -7,16 +7,41 @@
 # (fuzzel/sfwbar = child dwl). Launch dari luar sesi: taruh juga di ~/.profile.
 export _JAVA_AWT_WM_NONREPARENTING=1
 
-lxpolkit &                             # polkit auth agent (udisks mount minta password)
+# --- Bunuh helper sisa sesi sebelumnya ---------------------------------------
+# Helper yang pernah dilaunch detached (setsid/nohup, mis. dari sesi Claude)
+# TIDAK mati saat logout. Yang paling merusak: **dua xremap**. Keduanya
+# EVIOCGRAB keyboard yang sama dan masing-masing bikin virtual keyboard, jadi
+# key event kembar/hilang dan modifier nyangkut. Super yang dianggap masih
+# ditekan membuat BTN_LEFT kena bind `moveresize` (config.h buttons[]), dan
+# buttonpress() `return` sebelum wlr_seat_pointer_notify_button() — **klik
+# ditelan compositor tanpa gejala lain**. Sembuh sendiri saat key state resync
+# (buka app baru / ganti tag), itu sebabnya gejalanya intermiten.
+# Tradeoff: kalau ada sesi WM kedua hidup di TTY lain, helper-nya ikut mati.
+# Diterima — satu sesi per waktu lewat SDDM.
+for p in xremap sfwbar mako swaybg lxpolkit; do pkill -x "$p"; done
+pkill -f 'wsctl watch'
+sleep 0.3
+
+lxpolkit &                           # polkit auth agent (udisks mount minta password)
 xremap ~/.config/xremap/config.yml &   # Cmd->Ctrl remap (kalau via cargo: ~/.cargo/bin/xremap)
 waypaper --restore &                   # restore wallpaper terakhir (backend swaybg)
 sfwbar &                               # bar (launcher+taskbar+jam+status)
 mako &                                 # notification daemon (toast kanan-atas + OSD tag)
-# CATATAN: sfwbar pager TAK melacak tags dwl (dwl pakai tags, bukan
-# ext-workspace). Taskbar tetap jalan. Bar native tags dwl = dwlb (butuh fcft).
-# Sebagai ganti pager, tag aktif ditampilkan lewat OSD di loop paling bawah.
 
-# --- OSD tag ----------------------------------------------------------------
+# Entri XDG autostart (.desktop) — nm-applet, blueman, spice-vdagent, slack, dst.
+# Daftar yang dibuang ada di ~/.config/scripts/xdg-autostart.skip.
+# XDG_CURRENT_DESKTOP di-set INLINE, bukan export: dwl tak menyetelnya sama
+# sekali, dan membiarkannya kosong untuk sisa sesi disengaja — pemilihan backend
+# xdg-desktop-portal dan fallback `pgrep` di sfwbar/wsctl bergantung pada itu.
+# Filter OnlyShowIn/NotShowIn butuh nilai, jadi cuma script ini yang menerimanya.
+XDG_CURRENT_DESKTOP=wlroots:dwl ~/.config/scripts/xdg-autostart &
+# CATATAN: pager sfwbar melacak tag dwl lewat `wsctl mark` yang dipanggil dari
+# loop paling bawah — dwl tak punya IPC, jadi stdout-nya satu-satunya sumber.
+# Klik pager butuh `wtype` (sintesis Super+N); tanpa wtype highlight tetap benar,
+# cuma kliknya yang mati. Bar native tags dwl = dwlb (butuh fcft).
+# Tag aktif juga ditampilkan lewat OSD di loop yang sama.
+
+# --- OSD tag + pager sfwbar --------------------------------------------------
 # dwl mem-pipe stdout-nya ke STDIN script ini (dwl.c:2254-2271), jadi status
 # tag sudah mengalir ke sini tanpa perlu bar atau patch dwl.c apa pun. Sebelum
 # ada loop ini tak ada yang membacanya, dan baris-baris itu dibuang begitu saja
@@ -55,6 +80,19 @@ while read -r out key a b _rest; do
 		[ "$b" = "$last" ] && continue
 		last=$b
 		~/.config/scripts/osd-dwl-tag "$b"
+		# Pager sfwbar: bitmask -> nomor tag terendah yang menyala.
+		# `wsctl mark` cuma menulis state file, tak memicu perpindahan —
+		# jadi tak ada loop umpan-balik dgn keybind dwl. Toggleview
+		# (Ctrl+Super+N) bisa menyalakan >1 tag; pager cuma bisa menandai
+		# satu, dan yang terendah = pilihan yang stabil.
+		n=1
+		while [ "$n" -le 9 ]; do
+			if [ "$(((b >> (n - 1)) & 1))" = 1 ]; then
+				~/.config/sfwbar/wsctl mark "$n"
+				break
+			fi
+			n=$((n + 1))
+		done
 		;;
 	esac
 done

@@ -39,11 +39,11 @@ Rule: letters remapped by xremap **never** reach the compositor. Keys NOT remapp
 > `Alt+Space` and `Alt+Tab` are intentionally mirrored from `Super+` so Alt+Tab
 > muscle memory still works.
 
-## Workspaces (mac Spaces — 4 desktops)
+## Workspaces (mac Spaces — 8 desktops)
 
 | Shortcut | Action |
 |---|---|
-| `Super+1..4` | Switch to desktop 1–4 |
+| `Super+1..8` | Switch to desktop 1–8 |
 | `Ctrl+Super+Left` | Send window to desktop on the left |
 | `Ctrl+Super+Right` | Send window to desktop on the right |
 
@@ -69,9 +69,18 @@ Adding `Ctrl` sends to the **clipboard** (not a file), macOS-style.
 
 | Shortcut | Action |
 |---|---|
-| `XF86AudioRaiseVolume` | Volume +5% |
-| `XF86AudioLowerVolume` | Volume −5% |
-| `XF86AudioMute` | Toggle mute |
+| `XF86AudioRaiseVolume` | Volume +5% (with OSD) |
+| `XF86AudioLowerVolume` | Volume −5% (with OSD) |
+| `XF86AudioMute` | Toggle mute (with OSD) |
+| `XF86AudioMicMute` | Toggle microphone mute (with OSD) |
+| `XF86MonBrightnessUp` | Brightness +5% (with OSD) |
+| `XF86MonBrightnessDown` | Brightness −5% (with OSD) |
+
+> All of the above go through the wrappers `~/.config/scripts/volumectl` and
+> `~/.config/scripts/brightctl` — the wrapper calls `wpctl`/`brightnessctl`, then
+> shows a centered OSD (glyph + percent + bar) via mako. Volume is capped at 100%
+> (`wpctl -l 1.0`); brightness has a floor of raw value 1 (`brightnessctl -n1`) so
+> the screen can never be driven fully dark.
 
 ---
 
@@ -115,6 +124,30 @@ which collides with move-to-tag).
 | `Super+Ctrl+1..9` | Toggle-view tag N |
 | `Super+Ctrl+Shift+1..9` | Toggle tag on the window |
 | `Super+0` | View all tags |
+
+### Tag OSD (dwl only)
+
+Every tag switch shows a brief OSD in the centre of the screen (`󰓩 Tag 3`).
+This stands in for a pager: sfwbar's pager widget does **not** track dwl tags
+(dwl uses tags, not ext-workspace), so without the OSD there is no visual
+indication at all.
+
+How it works, since this differs from labwc/Hyprland: dwl pipes its stdout into
+`autostart.sh`'s **stdin** (`dwl.c:2254-2271`), and `printstatus()` emits a
+`tags <occupied> <selected> <clienttags> <urgent>` line whenever state changes.
+A loop at the bottom of `config/dwl/autostart.sh` reads those lines and calls
+`config/scripts/osd-dwl-tag`. Practical consequences:
+
+- **No recompile needed** — the OSD lives in a shell script, not `config.h`.
+- Tag changes from **clicking the sfwbar taskbar** or from window rules also
+  raise the OSD, not just key presses.
+- Switching focus between windows on the same tag does **not** raise the OSD
+  (`printstatus()` also fires on `focusclient`, so the loop de-duplicates).
+- Multi-tag via `Super+Ctrl+N` shows as `Tag 1,3`.
+- Requires **mako running** in the dwl session. If mako is dead, the OSD is
+  silent with no error.
+- If **dwlb** is added later, dwl's stdout may only have one consumer —
+  `autostart.sh` must `tee` to dwlb rather than two processes reading stdin.
 
 ## Multi-monitor (dwl)
 
@@ -173,12 +206,12 @@ changed. Everything lives in one file, `config/hypr/hyprland.conf`, which
 > The daemon comes from `exec-once = snappy-wrapper`; if it dies, `Super+` `` ` ``
 > still works. Config: `config/snappy-switcher/config.ini`.
 
-## Workspaces (Hyprland — 4 desktops, mac Spaces)
+## Workspaces (Hyprland — 8 desktops, mac Spaces)
 
 | Shortcut | Action |
 |---|---|
-| `Super+1..4` | Switch to workspace 1–4 |
-| `Super+Shift+1..4` | Move window to workspace 1–4 |
+| `Super+1..8` | Switch to workspace 1–8 |
+| `Super+Shift+1..8` | Move window to workspace 1–8 |
 | `Ctrl+Super+Left` / `Ctrl+Super+Right` | Send window to the neighbouring workspace |
 | `Ctrl+Alt+Left` / `Ctrl+Alt+Right` | Switch workspace without taking the window |
 | `Super+scroll` | Switch workspace (skips empty ones) |
@@ -201,9 +234,8 @@ changed. Everything lives in one file, `config/hypr/hyprland.conf`, which
 | drag a window edge | Resize (`resize_on_border`, no modifier) |
 
 Screenshots & media keys on Hyprland are **identical** to labwc (see above):
-`Super+Shift+3/4`, `+Ctrl` for clipboard, the `Print` family, `XF86Audio*`.
-Brightness (`XF86MonBrightness*`) is present but **commented out** — enable after
-`sudo dnf install brightnessctl`.
+`Super+Shift+3/4`, `+Ctrl` for clipboard, the `Print` family, `XF86Audio*` and
+`XF86MonBrightness*` (all via the `volumectl`/`brightctl` wrappers, with OSD).
 
 ## Hyprland features in use
 
@@ -267,6 +299,60 @@ The foot-specific block wins over the global one, keeping real `Ctrl+C` = SIGINT
 | `Super+F` | `Ctrl+Shift+F` | Search (foot) |
 
 > Raw `Ctrl+C` is untouched in foot → still sends SIGINT (interrupt).
+
+## Notifications (mako)
+
+Same on all three compositors. Uses `Ctrl+Super` because bare `Super+N`/`Super+D`
+are consumed by xremap (they become app-level `Ctrl+N`/`Ctrl+D`).
+
+| Key | Action |
+|---|---|
+| `Ctrl+Cmd+N` | Dismiss topmost notification |
+| `Ctrl+Cmd+Shift+N` | Dismiss all |
+| `Ctrl+Cmd+D` | Toggle Do Not Disturb |
+| `Ctrl+Cmd+Shift+D` | Restore last notification from history |
+
+Mouse: left = invoke default action, middle = dismiss group, right = dismiss.
+Theme/timeouts live in `config/mako/config`; apply without restart via
+`makoctl reload`.
+
+## Power menu (fuzzel)
+
+Same on all three compositors. `Ctrl+Super` is used because bare `Super+Q` is
+already close-window.
+
+| Key | Action |
+|---|---|
+| `Ctrl+Cmd+Q` | Open power menu |
+
+Menu contents (`config/scripts/powermenu`):
+
+| Entry | Command |
+|---|---|
+| `󰌾 Lock` | `swaylock -f` |
+| `󰗽 Log Out` | `loginctl terminate-session $XDG_SESSION_ID` |
+| `󰖔 Suspend` | lock first, then `systemctl suspend` |
+| `󰜉 Reboot` | `systemctl reboot` |
+| `󰐥 Shut Down` | `systemctl poweroff` |
+
+Log Out / Reboot / Shut Down ask for a **second confirmation** with `Cancel`
+highlighted — one reflex Enter will not power off the machine. Esc cancels.
+
+Other routes to the same menu: the `󰐥` button at the right end of sfwbar, and
+the **Power** submenu in labwc's desktop right-click menu
+(`config/labwc/menu.xml` — that route has **no** confirmation step, Openbox
+menus cannot chain prompts).
+
+Notes:
+- **Log Out ≠ labwc Exit / Hyprland `Super+Shift+Q`.** Those only kill the
+  compositor; `loginctl terminate-session` closes the logind session properly.
+  Per-WM exit actions are not used because labwc has no exit CLI and dwl has no
+  IPC at all.
+- `poweroff`/`reboot`/`suspend` need **no sudo** — logind permits them for the
+  active session via polkit, and `lxpolkit` is already autostarted on all three.
+- Lock screen theme lives in `config/swaylock/config`. The Fedora package is
+  **upstream** swaylock, so `screenshots`/`effect-blur` DO NOT EXIST — using
+  them makes swaylock fail to start, leaving the screen unlocked.
 
 ---
 

@@ -8,7 +8,11 @@ DOTFILES := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 CONFIG   := $(HOME)/.config
 
 # Dir di config/ yang di-symlink utuh ke ~/.config/
-DIRS := foot fuzzel hypr labwc sfwbar snappy-switcher waypaper xremap
+#
+# `scripts` = powermenu + osd + osd-dwl-tag. Dipanggil ketiga compositor lewat
+# path absolut ~/.config/scripts/..., jadi symlink-nya WAJIB ada — tanpa itu
+# keybind power menu dan OSD tag dwl gagal tanpa pesan error apa pun.
+DIRS := dwl foot fuzzel hypr labwc mako scripts sfwbar snappy-switcher swaylock waypaper xremap
 
 # Tema labwc (Openbox-style) — di-symlink ke ~/.local/share/themes/
 THEMES_SRC := $(DOTFILES)/config/labwc/themes

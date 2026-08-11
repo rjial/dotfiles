@@ -1,0 +1,69 @@
+#!/bin/sh
+# brightctl — ubah brightness layar lewat brightnessctl, lalu tampilkan OSD.
+#
+# usage: brightctl up|down [step]
+#        step = persen, default 5.
+#
+# Nama file sengaja BUKAN `brightnessctl` supaya tak menutupi binary
+# /usr/bin/brightnessctl kalau ~/.config/scripts pernah masuk PATH.
+#
+# Dipanggil dari keybind XF86MonBrightness{Up,Down} di ketiga compositor.
+#
+# KENAPA `-n1` (min-value):
+# `brightnessctl set 5%-` boleh sampai 0 = layar mati total dan user tak bisa
+# melihat apa pun untuk menaikkannya kembali. `-n1` menahan di raw value 1
+# (bukan 1%) — nyaris hitam tapi masih ada.
+#
+# WAJIB `-n1` MENEMPEL, JANGAN `-n 1`:
+# argumen `-n` bersifat OPSIONAL di getopt brightnessctl, jadi bentuk terpisah
+# tidak mengikat — "1" lepas menjadi argumen posisi dan dibaca sebagai operation,
+# sehingga perintah berubah jadi "tampilkan info" dan brightness TAK berubah.
+# Gejalanya jahat: exit code tetap 0 dan tak ada pesan error (diuji: `-n 1 set
+# 5%-` mencetak info, nilai tetap; `-n1 set 5%-` turun dari 100% ke 95%).
+#
+# CATATAN AKSES:
+# paket brightnessctl Fedora TIDAK memasang udev rule, dan user tidak ada di
+# grup `video` — /sys/class/backlight/*/brightness milik root (0644). Yang
+# membuatnya tetap jalan tanpa sudo: binary-nya di-build dgn dukungan logind
+# (`strings` memuat org.freedesktop.login1.Session), jadi penulisan dilakukan
+# lewat metode D-Bus SetBrightness milik sesi aktif. Konsekuensi: HANYA jalan di
+# sesi grafis yang aktif — dari SSH akan gagal. Jangan "perbaiki" dgn
+# menambahkan sudo/pkexec.
+#
+# `-q` supaya brightnessctl tak mencetak ke stdout tiap kali tombol ditekan.
+
+set -u
+
+export LC_ALL=C
+
+OSD="$(dirname "$0")/osd"
+
+# Glyph brightness: dari seri nf-md-brightness (F00DB..F00E1) hanya F00E0 dan
+# F00E1 yang ADA di `Symbols Nerd Font` terpasang — F00DB/DC/DD/DE/DF jatuh ke
+# Jomolhari (dicek dgn `fc-match ":charset=<cp>"`). Jadi tak ada gradasi glyph
+# terang/redup seperti volume; satu glyph saja, angka + bar yang membawa info.
+GLYPH='󰃠'
+
+usage() {
+	echo "usage: ${0##*/} up|down [step]" >&2
+	exit 2
+}
+
+# brightnessctl -m i -> "intel_backlight,backlight,120000,100%,120000"
+# Ambil field ke-4, buang '%'. NR==1 sebab mesin dgn >1 device backlight
+# mencetak satu baris per device.
+read_percent() {
+	brightnessctl -m i | awk -F, 'NR == 1 { gsub("%", "", $4); print $4 }'
+}
+
+[ $# -ge 1 ] || usage
+step=${2:-5}
+
+case $1 in
+up)   brightnessctl -q -n1 set "$step%+" || exit 1 ;;
+down) brightnessctl -q -n1 set "$step%-" || exit 1 ;;
+*)    usage ;;
+esac
+
+pct=$(read_percent)
+exec "$OSD" brightness "$GLYPH  $pct%" "$pct"

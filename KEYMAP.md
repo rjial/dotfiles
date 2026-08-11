@@ -38,11 +38,11 @@ di-remap (`q m h space tab grave arrows 0-9 period slash bracket Print`) jatuh k
 
 > `Alt+Space` dan `Alt+Tab` sengaja di-mirror dari `Super+` supaya muscle memory Alt+Tab tetap kepakai.
 
-## Workspaces (mac Spaces — 4 desktop)
+## Workspaces (mac Spaces — 8 desktop)
 
 | Shortcut | Aksi |
 |---|---|
-| `Super+1..4` | Pindah ke desktop 1–4 |
+| `Super+1..8` | Pindah ke desktop 1–8 |
 | `Ctrl+Super+Left` | Kirim window ke desktop kiri |
 | `Ctrl+Super+Right` | Kirim window ke desktop kanan |
 
@@ -67,9 +67,18 @@ Tambah `Ctrl` = ke **clipboard** (bukan file), pola ala macOS.
 
 | Shortcut | Aksi |
 |---|---|
-| `XF86AudioRaiseVolume` | Volume +5% |
-| `XF86AudioLowerVolume` | Volume −5% |
-| `XF86AudioMute` | Toggle mute |
+| `XF86AudioRaiseVolume` | Volume +5% (dgn OSD) |
+| `XF86AudioLowerVolume` | Volume −5% (dgn OSD) |
+| `XF86AudioMute` | Toggle mute (dgn OSD) |
+| `XF86AudioMicMute` | Toggle mute mikrofon (dgn OSD) |
+| `XF86MonBrightnessUp` | Brightness +5% (dgn OSD) |
+| `XF86MonBrightnessDown` | Brightness −5% (dgn OSD) |
+
+> Semua tombol di atas lewat wrapper `~/.config/scripts/volumectl` dan
+> `~/.config/scripts/brightctl` — wrapper memanggil `wpctl`/`brightnessctl` lalu
+> memunculkan OSD di tengah layar (glyph + persen + bar) lewat mako. Volume ditahan
+> maksimum 100% (`wpctl -l 1.0`), brightness ditahan minimum 1 (`brightnessctl -n1`)
+> supaya layar tak bisa dibuat gelap total.
 
 ---
 
@@ -113,6 +122,28 @@ karena bentrok dgn pindah-tag).
 | `Super+Ctrl+1..9` | Toggle tampilkan tag N |
 | `Super+Ctrl+Shift+1..9` | Toggle tag pada window |
 | `Super+0` | Lihat semua tag |
+
+### OSD tag (hanya dwl)
+
+Tiap perpindahan tag memunculkan OSD singkat di tengah layar (`󰓩 Tag 3`).
+Ini pengganti pager: widget pager sfwbar **tidak** melacak tag dwl (dwl pakai
+tags, bukan ext-workspace), jadi tanpa OSD tak ada indikasi visual sama sekali.
+
+Cara kerjanya, karena ini beda dari labwc/Hyprland: dwl mem-pipe stdout-nya ke
+**stdin** `autostart.sh` (`dwl.c:2254-2271`), dan `printstatus()` mengirim baris
+`tags <occupied> <selected> <clienttags> <urgent>` tiap kali state berubah. Loop
+di ujung `config/dwl/autostart.sh` membaca baris itu dan memanggil
+`config/scripts/osd-dwl-tag`. Konsekuensi praktis:
+
+- **Tak butuh recompile** — OSD ada di shell script, bukan `config.h`.
+- Perubahan tag dari **klik taskbar sfwbar** atau window rule juga memunculkan
+  OSD, bukan cuma tekan tombol.
+- Ganti fokus window dalam tag yang sama **tidak** memunculkan OSD (`printstatus()`
+  juga dipicu `focusclient`, jadi loop men-dedupe).
+- Multi-tag lewat `Super+Ctrl+N` tampil sebagai `Tag 1,3`.
+- Butuh **mako jalan** di sesi dwl. Kalau mako mati, OSD diam tanpa pesan error.
+- Kalau nanti **dwlb** dipasang, stdout dwl cuma boleh punya satu konsumen —
+  `autostart.sh` harus `tee` ke dwlb, bukan dua proses baca stdin bersamaan.
 
 ## Multi-monitor (dwl)
 
@@ -169,12 +200,12 @@ Semua di satu file `config/hypr/hyprland.conf`, **auto-reload saat disimpan**.
 > Daemon dijalankan `exec-once = snappy-wrapper`; kalau mati, `Super+` `` ` ``
 > tetap bekerja. Config: `config/snappy-switcher/config.ini`.
 
-## Workspaces (Hyprland — 4 desktop, mac Spaces)
+## Workspaces (Hyprland — 8 desktop, mac Spaces)
 
 | Shortcut | Aksi |
 |---|---|
-| `Super+1..4` | Pindah ke workspace 1–4 |
-| `Super+Shift+1..4` | Pindah window ke workspace 1–4 |
+| `Super+1..8` | Pindah ke workspace 1–8 |
+| `Super+Shift+1..8` | Pindah window ke workspace 1–8 |
 | `Ctrl+Super+Left` / `Ctrl+Super+Right` | Kirim window ke workspace tetangga |
 | `Ctrl+Alt+Left` / `Ctrl+Alt+Right` | Pindah workspace tanpa bawa window |
 | `Super+scroll` | Ganti workspace (skip yang kosong) |
@@ -197,9 +228,8 @@ Semua di satu file `config/hypr/hyprland.conf`, **auto-reload saat disimpan**.
 | drag tepi window | Resize (`resize_on_border`, tanpa modifier) |
 
 Screenshot & media key Hyprland = **sama persis** dgn labwc (lihat atas):
-`Super+Shift+3/4`, `+Ctrl` ke clipboard, `Print` family, `XF86Audio*`.
-Brightness (`XF86MonBrightness*`) tersedia tapi **dikomentari** — aktifkan setelah
-`sudo dnf install brightnessctl`.
+`Super+Shift+3/4`, `+Ctrl` ke clipboard, `Print` family, `XF86Audio*`,
+`XF86MonBrightness*` (semuanya lewat wrapper `volumectl`/`brightctl`, dgn OSD).
 
 ## Fitur Hyprland yang dipakai
 
@@ -262,6 +292,59 @@ Blok khusus foot menang atas global. Bikin `Ctrl+C` asli tetap = SIGINT.
 | `Super+F` | `Ctrl+Shift+F` | Search (foot) |
 
 > `Ctrl+C` mentah tidak disentuh di foot → tetap kirim SIGINT (interrupt).
+
+## Notifikasi (mako)
+
+Sama di ketiga compositor. Pakai `Ctrl+Super` sebab `Super+N`/`Super+D` polos
+sudah dimakan xremap (jadi `Ctrl+N`/`Ctrl+D` untuk app).
+
+| Tombol | Aksi |
+|---|---|
+| `Ctrl+Cmd+N` | Tutup notifikasi teratas |
+| `Ctrl+Cmd+Shift+N` | Tutup semua notifikasi |
+| `Ctrl+Cmd+D` | Toggle Do Not Disturb |
+| `Ctrl+Cmd+Shift+D` | Munculkan lagi notifikasi terakhir dari history |
+
+Klik: kiri = jalankan aksi default notifikasi, tengah = tutup satu grup,
+kanan = tutup. Tema/timeout diatur di `config/mako/config`, reload tanpa
+restart: `makoctl reload`.
+
+## Power menu (fuzzel)
+
+Sama di ketiga compositor. `Ctrl+Super` dipakai sebab `Super+Q` polos sudah
+jadi close window.
+
+| Tombol | Aksi |
+|---|---|
+| `Ctrl+Cmd+Q` | Buka power menu |
+
+Isi menu (`config/scripts/powermenu`):
+
+| Entri | Perintah |
+|---|---|
+| `󰌾 Lock` | `swaylock -f` |
+| `󰗽 Log Out` | `loginctl terminate-session $XDG_SESSION_ID` |
+| `󰖔 Suspend` | lock dulu, lalu `systemctl suspend` |
+| `󰜉 Reboot` | `systemctl reboot` |
+| `󰐥 Shut Down` | `systemctl poweroff` |
+
+Log Out / Reboot / Shut Down minta **konfirmasi kedua**, dengan `Cancel`
+ter-highlight — satu Enter refleks tak akan mematikan mesin. Esc = batal.
+
+Jalur lain ke menu yang sama: tombol `󰐥` di ujung kanan sfwbar, dan submenu
+**Power** di klik-kanan desktop labwc (`config/labwc/menu.xml` — jalur ini
+**tanpa** konfirmasi, menu Openbox tak bisa berantai prompt).
+
+Catatan:
+- **Log Out ≠ Exit labwc / `Super+Shift+Q` Hyprland.** Yang terakhir cuma
+  membunuh compositor; `loginctl terminate-session` menutup sesi logind dengan
+  benar. Aksi per-WM tak dipakai sebab labwc tak punya CLI exit dan dwl tak
+  punya IPC sama sekali.
+- `poweroff`/`reboot`/`suspend` **tak butuh sudo** — logind mengizinkannya untuk
+  sesi aktif lewat polkit, dan `lxpolkit` sudah di-autostart di ketiga WM.
+- Tema lock screen di `config/swaylock/config`. Paket Fedora = swaylock
+  **upstream**, jadi `screenshots`/`effect-blur` TIDAK ADA — memakainya membuat
+  swaylock gagal start dan layar tak terkunci sama sekali.
 
 ---
 

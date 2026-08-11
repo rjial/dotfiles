@@ -1,0 +1,107 @@
+# mako — notification daemon (labwc / dwl / Hyprland).
+# Toast pojok kanan-atas ala macOS. Reload tanpa restart: makoctl reload
+#
+# Tema: Catppuccin Frappé (accent teal) — sama dgn fuzzel/foot/sfwbar.
+# border-radius 8 = sinkron `rounding` Hyprland dan `cornerRadius` labwc.
+
+# --- Penempatan -------------------------------------------------------------
+# layer=overlay: toast tetap terlihat di atas window fullscreen.
+# margin top 34 = tinggi sfwbar (min-height 24px + padding) + jarak nafas,
+# supaya toast tidak menempel/menutupi menu-bar.
+layer=overlay
+anchor=top-right
+margin=34,14
+width=360
+height=140
+max-visible=5
+
+# --- Isi & bentuk -----------------------------------------------------------
+font=Inter 10
+padding=12,14
+border-size=1
+border-radius=8
+icons=1
+max-icon-size=48
+markup=1
+actions=1
+format=<b>%s</b>\n%b
+# Judul app di atas grup (mirip header notifikasi macOS).
+group-by=app-name
+
+# --- Warna (Frappé: base/text/surface1/teal) --------------------------------
+# Alpha dd = samakan transparansi fuzzel.
+background-color=#303446dd
+text-color=#c6d0f5ff
+border-color=#81c8beff
+progress-color=over #51576dff
+
+# --- Perilaku ---------------------------------------------------------------
+default-timeout=5000
+ignore-timeout=0
+max-history=50
+sort=-time
+
+on-button-left=invoke-default-action
+on-button-middle=dismiss-group
+on-button-right=dismiss
+
+# --- Per-urgency ------------------------------------------------------------
+[urgency=low]
+border-color=#51576dff
+text-color=#a5adceff
+default-timeout=3000
+
+[urgency=normal]
+border-color=#81c8beff
+
+# Critical tidak auto-hilang — harus di-dismiss manual.
+[urgency=critical]
+border-color=#e78284ff
+default-timeout=0
+
+# --- OSD --------------------------------------------------------------------
+# Dipakai config/scripts/osd. Pengirimnya: OSD tag dwl (config/dwl/autostart.sh,
+# dwl saja) plus volumectl & brightctl (ketiga WM, dari keybind XF86*).
+#
+# Bedanya dgn toast biasa: muncul di TENGAH (bukan pojok), kecil, cepat hilang,
+# dan tidak masuk history — ini indikator sesaat, bukan notifikasi.
+#
+# `history=0` supaya OSD tak memenuhi `makoctl restore` (bind Ctrl+Cmd+Shift+D).
+# `format=%s` karena osd mengirim teks sebagai summary, body kosong.
+#
+# `progress-color` = bar volume/brightness. osd mengirim hint `value` (0-100) dan
+# mako mengecat bagian kiri toast sebesar nilai itu — TIDAK ada widget bar
+# terpisah, jadi warnanya harus kontras tipis terhadap background, bukan teal
+# penuh (teal penuh membuat teks tak terbaca). `over` = digambar di atas
+# background; `source` akan MENGGANTI background dan merusak transparansi.
+# OSD tag tak mengirim `value`, jadi tak ada bar di sana — itu disengaja.
+#
+# JANGAN tambah `max-visible` di sini — mako menolak config-nya dengan
+# "Setting `max_visible` is allowed only for `output` and/or `anchor`" dan
+# SELURUH file gagal di-parse. Tak perlu juga: `notify-send -r` di script osd
+# sudah menjamin hanya ada satu toast OSD.
+[category=osd]
+anchor=center
+layer=overlay
+width=220
+height=90
+padding=16,24
+font=Inter 15
+format=%s
+icons=0
+markup=0
+border-size=1
+progress-color=over #81c8be33
+default-timeout=900
+history=0
+
+# --- Do Not Disturb ---------------------------------------------------------
+# Toggle: makoctl mode -t do-not-disturb  (bind Ctrl+Cmd+D).
+# Notifikasi tetap masuk history, cuma tidak dipopupkan — `makoctl restore`
+# memunculkannya kembali setelah DND dimatikan.
+#
+# Blok ini SENGAJA paling bawah: criteria mako dievaluasi berurutan, jadi DND
+# harus menang atas [category=osd] di atas — kalau tidak, OSD tetap muncul saat
+# DND aktif.
+[mode=do-not-disturb]
+invisible=1

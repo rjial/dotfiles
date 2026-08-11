@@ -4,3 +4,11 @@ lxpolkit &                             # polkit auth agent — WAJIB agar udisks
 xremap ~/.config/xremap/config.yml &   # if installed via cargo: ~/.cargo/bin/xremap
 waypaper --restore &                   # restore wallpaper terakhir (backend swaybg)
 sfwbar &                               # top menu-bar ala macOS
+mako &                                 # notification daemon (toast kanan-atas)
+
+# Entri XDG autostart (.desktop) — nm-applet, blueman, spice-vdagent, slack, dst.
+# Paling akhir supaya 5 daemon di atas sudah jalan duluan. Daftar yang dibuang
+# ada di ~/.config/scripts/xdg-autostart.skip; cek dgn flag -n sebelum relog.
+# Default `labwc` untuk sesi dari TTY — lewat SDDM variabel ini sudah diisi
+# `DesktopNames=labwc` di labwc.desktop.
+XDG_CURRENT_DESKTOP=${XDG_CURRENT_DESKTOP:-labwc} ~/.config/scripts/xdg-autostart &

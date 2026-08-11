@@ -97,6 +97,14 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 /* commands */
 static const char *termcmd[] = { "foot", NULL };
 static const char *menucmd[] = { "fuzzel", NULL };
+/* mako — notification daemon (dijalankan dari autostart.sh) */
+static const char *notifdismisscmd[]    = { "makoctl", "dismiss", NULL };
+static const char *notifdismissallcmd[] = { "makoctl", "dismiss", "--all", NULL };
+static const char *notifdndcmd[]        = { "makoctl", "mode", "-t", "do-not-disturb", NULL };
+static const char *notifrestorecmd[]    = { "makoctl", "restore", NULL };
+/* power menu (fuzzel) — shared dgn labwc rc.xml C-W-q & Hyprland CTRL $mod Q.
+ * Lewat /bin/sh supaya $HOME diekspansi; spawn() tak lewat shell sendiri. */
+static const char *powermenucmd[] = { "/bin/sh", "-c", "exec \"$HOME/.config/scripts/powermenu\"", NULL };
 
 static const Key keys[] = {
 	/* modifier                     key                function          argument */
@@ -146,6 +154,18 @@ static const Key keys[] = {
 	TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                      7),
 	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                     8),
 
+	/* --- Notifikasi mako (Ctrl+Super — xremap cuma makan Super+huruf polos) --- */
+	{ MODKEY|WLR_MODIFIER_CTRL,     XKB_KEY_n,         spawn,            {.v = notifdismisscmd} },
+	{ MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_N, spawn,     {.v = notifdismissallcmd} },
+	{ MODKEY|WLR_MODIFIER_CTRL,     XKB_KEY_d,         spawn,            {.v = notifdndcmd} },
+	{ MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_D, spawn,     {.v = notifrestorecmd} },
+
+	/* --- Power menu (Ctrl+Super+Q) ---
+	 * Super+q polos = killclient (di atas), jadi power pakai Ctrl+Super.
+	 * `q` juga TIDAK termasuk huruf yang dimakan xremap, dan Ctrl+Super lolos
+	 * karena xremap mencocokkan modifier secara persis. */
+	{ MODKEY|WLR_MODIFIER_CTRL,     XKB_KEY_q,         spawn,            {.v = powermenucmd} },
+
 	/* --- Screenshot (Print-based; TIDAK pakai Super+Shift+digit krn bentrok
 	 *     dgn tag). Mirror labwc: Print=clipboard, +Ctrl=file. --- */
 	{ 0,                            XKB_KEY_Print,     spawn, SHCMD("grim - | wl-copy -t image/png") },
@@ -153,10 +173,17 @@ static const Key keys[] = {
 	{ WLR_MODIFIER_CTRL,            XKB_KEY_Print,     spawn, SHCMD("grim ~/Pictures/shot-$(date +%s).png") },
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Print, spawn, SHCMD("grim -g \"$(slurp)\" ~/Pictures/shot-$(date +%s).png") },
 
-	/* --- Media keys (mirror labwc, wpctl) --- */
-	{ 0, XKB_KEY_XF86AudioRaiseVolume, spawn, SHCMD("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+") },
-	{ 0, XKB_KEY_XF86AudioLowerVolume, spawn, SHCMD("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-") },
-	{ 0, XKB_KEY_XF86AudioMute,        spawn, SHCMD("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle") },
+	/* --- Media keys (mirror labwc) ---
+	 * Lewat wrapper ~/.config/scripts/{volumectl,brightctl}: wrapper yang
+	 * memanggil wpctl/brightnessctl lalu memunculkan OSD (slot volume /
+	 * brightness, dirender mako). Jangan kembalikan ke wpctl langsung —
+	 * OSD-nya ikut hilang. SHCMD sudah lewat /bin/sh jadi $HOME diekspansi. */
+	{ 0, XKB_KEY_XF86AudioRaiseVolume,  spawn, SHCMD("exec \"$HOME/.config/scripts/volumectl\" up") },
+	{ 0, XKB_KEY_XF86AudioLowerVolume,  spawn, SHCMD("exec \"$HOME/.config/scripts/volumectl\" down") },
+	{ 0, XKB_KEY_XF86AudioMute,         spawn, SHCMD("exec \"$HOME/.config/scripts/volumectl\" mute") },
+	{ 0, XKB_KEY_XF86AudioMicMute,      spawn, SHCMD("exec \"$HOME/.config/scripts/volumectl\" mic-mute") },
+	{ 0, XKB_KEY_XF86MonBrightnessUp,   spawn, SHCMD("exec \"$HOME/.config/scripts/brightctl\" up") },
+	{ 0, XKB_KEY_XF86MonBrightnessDown, spawn, SHCMD("exec \"$HOME/.config/scripts/brightctl\" down") },
 
 	/* --- Quit dwl --- */
 	{ MODKEY|WLR_MODIFIER_SHIFT,    XKB_KEY_q,         quit,             {0} },

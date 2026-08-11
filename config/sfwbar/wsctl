@@ -20,7 +20,13 @@ Dukungan per compositor:
               perintah); baca via state file yg ditulis `set`/`mark`. Supaya
               ganti workspace lewat keyboard juga kebaca bar, rc.xml memanggil
               `wsctl mark N` berdampingan dgn GoToDesktop — lihat README.
-    dwl       tak didukung (tags, bukan workspace; butuh dwlb sbg bar).
+    dwl       jalur sama dgn labwc (state file + wtype), tapi sumber `mark`-nya
+              BUKAN keybind: loop stdin di config/dwl/autostart.sh sudah membaca
+              baris `tags` dari stdout dwl untuk OSD, dan sekalian memanggil
+              `wsctl mark N`. Jadi bar ikut semua perubahan tag, termasuk yg
+              bukan dari keyboard. dwl punya 9 tag sedangkan pager sfwbar cuma
+              4 label — tag 5-9 valid dan tetap dicatat, cuma tak ada label yg
+              menyala.
 """
 
 import json
@@ -30,7 +36,10 @@ import subprocess
 import sys
 import time
 
-WS_COUNT = 4
+# Jumlah slot per compositor. dwl = 9 tag (TAGCOUNT, config/dwl/config.h:31),
+# labwc/Hyprland = 8 workspace persistent. Pager punya 8 label, jadi tag 9 dwl
+# tetap dicatat tapi tak ada label yang menyala.
+WS_COUNT = {"dwl": 9, "labwc": 8, "hyprland": 8, "unknown": 8}
 STATE = os.path.join(
     os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "wsctl-active"
 )
@@ -44,6 +53,14 @@ def compositor():
         return "labwc"
     if "dwl" in desktop:
         return "dwl"
+    # XDG_CURRENT_DESKTOP TIDAK selalu ada: dwl tak menyetelnya sama sekali, dan
+    # sesi yang dijalankan dari TTY (`dbus-run-session labwc`) juga tidak. Tanpa
+    # fallback ini compositor() balik "unknown" dan seluruh pager mati diam-diam
+    # — highlight beku di 1, klik keluar dgn "tak didukung".
+    for name in ("Hyprland", "labwc", "dwl"):
+        if subprocess.run(["pgrep", "-x", name],
+                          capture_output=True).returncode == 0:
+            return name.lower()
     return "unknown"
 
 
@@ -130,24 +147,25 @@ def state_write(ws):
     os.replace(tmp, STATE)
 
 
-def labwc_watch():
-    """labwc tak punya IPC perintah. labwc 0.9 memang mengekspos
-    ext_workspace_manager_v1, tapi itu protokol Wayland — butuh klien Wayland,
-    bukan sesuatu yg bisa dibaca dari script. Jadi state di-track sendiri lewat
-    `set`/`mark`."""
+def state_watch():
+    """Dipakai labwc DAN dwl. Keduanya tak punya IPC perintah — labwc 0.9 memang
+    mengekspos ext_workspace_manager_v1, tapi itu protokol Wayland (butuh klien
+    Wayland, bukan sesuatu yg bisa dibaca dari script), dan dwl tak punya apa pun.
+    Jadi state di-track sendiri lewat `set`/`mark`."""
     while True:
         emit(state_read())
         time.sleep(0.25)
 
 
-def labwc_set(ws):
+def key_set(ws, wm):
+    """Sintesis Super+<digit>: labwc -> GoToDesktop (rc.xml), dwl -> view
+    (TAGKEYS, config.h:88-90). Dua-duanya tak punya jalur perintah lain."""
     state_write(ws)
-    # Sintesis Super+<digit> supaya keybind rc.xml (GoToDesktop) yg bekerja.
     try:
         subprocess.run(["wtype", "-M", "logo", "-k", str(ws), "-m", "logo"],
                        capture_output=True, timeout=2)
     except FileNotFoundError:
-        sys.exit("wsctl: butuh wtype untuk labwc — sudo dnf install wtype")
+        sys.exit("wsctl: butuh wtype untuk %s — sudo dnf install wtype" % wm)
 
 
 # ---------------------------------------------------------------------- main
@@ -162,10 +180,10 @@ def main():
     if cmd == "watch":
         if wm == "hyprland":
             hypr_watch()
-        elif wm == "labwc":
-            labwc_watch()
+        elif wm in ("labwc", "dwl"):
+            state_watch()
         else:
-            # dwl / tak dikenal: cetak sekali biar bar tak kosong, lalu diam.
+            # Tak dikenal: cetak sekali biar bar tak kosong, lalu diam.
             emit(1)
             while True:
                 time.sleep(3600)
@@ -175,14 +193,15 @@ def main():
         if len(sys.argv) < 3:
             sys.exit("wsctl: %s butuh nomor workspace" % cmd)
         ws = int(sys.argv[2])
-        if not 1 <= ws <= WS_COUNT:
-            sys.exit("wsctl: workspace di luar 1-%d" % WS_COUNT)
+        limit = WS_COUNT[wm]
+        if not 1 <= ws <= limit:
+            sys.exit("wsctl: workspace di luar 1-%d" % limit)
         if cmd == "mark":
             state_write(ws)
         elif wm == "hyprland":
             hypr_set(ws)
-        elif wm == "labwc":
-            labwc_set(ws)
+        elif wm in ("labwc", "dwl"):
+            key_set(ws, wm)
         else:
             sys.exit("wsctl: ganti workspace tak didukung di %s" % wm)
         return

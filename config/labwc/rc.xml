@@ -1,12 +1,16 @@
 <?xml version="1.0"?>
 <labwc_config>
   <core><gap>6</gap></core>
-  <desktops number="4">
+  <desktops number="8">
     <names>
       <name>&#xf0ca0;</name>
       <name>&#xf0ca2;</name>
       <name>&#xf0ca4;</name>
       <name>&#xf0ca6;</name>
+      <name>&#xf0ca8;</name>
+      <name>&#xf0caa;</name>
+      <name>&#xf0cac;</name>
+      <name>&#xf0cae;</name>
     </names>
   </desktops>
   <theme>
@@ -57,8 +61,37 @@
       <action name="GoToDesktop" to="4"/>
       <action name="Execute" command="~/.config/sfwbar/wsctl mark 4"/>
     </keybind>
+    <keybind key="W-5">
+      <action name="GoToDesktop" to="5"/>
+      <action name="Execute" command="~/.config/sfwbar/wsctl mark 5"/>
+    </keybind>
+    <keybind key="W-6">
+      <action name="GoToDesktop" to="6"/>
+      <action name="Execute" command="~/.config/sfwbar/wsctl mark 6"/>
+    </keybind>
+    <keybind key="W-7">
+      <action name="GoToDesktop" to="7"/>
+      <action name="Execute" command="~/.config/sfwbar/wsctl mark 7"/>
+    </keybind>
+    <keybind key="W-8">
+      <action name="GoToDesktop" to="8"/>
+      <action name="Execute" command="~/.config/sfwbar/wsctl mark 8"/>
+    </keybind>
     <keybind key="C-W-Left"><action name="SendToDesktop" to="left"/></keybind>
     <keybind key="C-W-Right"><action name="SendToDesktop" to="right"/></keybind>
+
+    <!-- Notifikasi (mako). Ctrl+Super dipakai supaya xremap meloloskannya —
+         W-n / W-d polos sudah dimakan xremap jadi Ctrl+n / Ctrl+d. -->
+    <keybind key="C-W-n"><action name="Execute" command="makoctl dismiss"/></keybind>
+    <keybind key="C-W-S-n"><action name="Execute" command="makoctl dismiss --all"/></keybind>
+    <keybind key="C-W-d"><action name="Execute" command="makoctl mode -t do-not-disturb"/></keybind>
+    <keybind key="C-W-S-d"><action name="Execute" command="makoctl restore"/></keybind>
+
+    <!-- Power menu (fuzzel). Ctrl+Super+Q dipakai karena W-q polos = Close.
+         Sama di dwl (config.h) dan Hyprland (hyprland.conf). Log Out di dalam
+         menu memakai `loginctl terminate-session`, bukan aksi Exit labwc —
+         Exit hanya membunuh compositor, tak menutup sesi logind. -->
+    <keybind key="C-W-q"><action name="Execute" command="~/.config/scripts/powermenu"/></keybind>
 
     <!-- Screenshots -->
     <keybind key="W-S-3">
@@ -88,10 +121,14 @@
       <action name="Execute" command='sh -c "grim -g \"$(slurp)\" ~/Pictures/shot-$(date +%s).png"'/>
     </keybind>
 
-    <!-- Media keys -->
-    <keybind key="XF86AudioRaiseVolume"><action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"/></keybind>
-    <keybind key="XF86AudioLowerVolume"><action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"/></keybind>
-    <keybind key="XF86AudioMute"><action name="Execute" command="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"/></keybind>
+    <!-- Media keys — lewat wrapper scripts/ supaya ada OSD, bukan wpctl/
+         brightnessctl langsung. Wrapper yang memanggil tool aslinya. -->
+    <keybind key="XF86AudioRaiseVolume"><action name="Execute" command="~/.config/scripts/volumectl up"/></keybind>
+    <keybind key="XF86AudioLowerVolume"><action name="Execute" command="~/.config/scripts/volumectl down"/></keybind>
+    <keybind key="XF86AudioMute"><action name="Execute" command="~/.config/scripts/volumectl mute"/></keybind>
+    <keybind key="XF86AudioMicMute"><action name="Execute" command="~/.config/scripts/volumectl mic-mute"/></keybind>
+    <keybind key="XF86MonBrightnessUp"><action name="Execute" command="~/.config/scripts/brightctl up"/></keybind>
+    <keybind key="XF86MonBrightnessDown"><action name="Execute" command="~/.config/scripts/brightctl down"/></keybind>
   </keyboard>
   <mouse/>
 </labwc_config>
