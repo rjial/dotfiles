@@ -63,8 +63,10 @@ default-timeout=0
 # Dipakai config/scripts/osd. Pengirimnya: OSD tag dwl (config/dwl/autostart.sh,
 # dwl saja) plus volumectl & brightctl (ketiga WM, dari keybind XF86*).
 #
-# Bedanya dgn toast biasa: muncul di TENGAH (bukan pojok), kecil, cepat hilang,
-# dan tidak masuk history — ini indikator sesaat, bukan notifikasi.
+# Bedanya dgn toast biasa: muncul di BAWAH-TENGAH (bukan pojok), kecil, cepat
+# hilang, dan tidak masuk history — ini indikator sesaat, bukan notifikasi.
+# margin=48 = jarak dari tepi bawah layar (sfwbar di atas, jadi tak perlu jaga
+# jarak dari bar seperti toast biasa).
 #
 # `history=0` supaya OSD tak memenuhi `makoctl restore` (bind Ctrl+Cmd+Shift+D).
 # `format=%s` karena osd mengirim teks sebagai summary, body kosong.
@@ -81,7 +83,8 @@ default-timeout=0
 # SELURUH file gagal di-parse. Tak perlu juga: `notify-send -r` di script osd
 # sudah menjamin hanya ada satu toast OSD.
 [category=osd]
-anchor=center
+anchor=bottom-center
+margin=48
 layer=overlay
 width=220
 height=90
