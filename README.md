@@ -29,7 +29,8 @@ config/
   dwl/config.h         # dwl keybinds/appearance (compiled in)
   dwl/autostart.sh     # dwl startup (dwl -s ...) + tag OSD stdin loop
   dwl/dwl.desktop      # SDDM session entry
-  hypr/hyprland.conf   # Hyprland: keybinds + env + autostart + effects (one file)
+  hypr/hyprland.lua    # Hyprland: keybinds + env + autostart + effects (one file)
+  hypr/hyprland.conf.bak # previous .conf config — INERT, kept as a fallback
   mako/config          # notification daemon (toast top-right + OSD) — SHARED
   scripts/powermenu    # power menu via fuzzel (lock/logout/suspend/…) — SHARED
   scripts/osd          # generic OSD renderer via mako — SHARED
@@ -168,8 +169,12 @@ session menu.
 Same keymap as labwc where it makes sense, but tiling, and using Hyprland's own
 features: dwindle auto-tiling, animations, blur/shadow/gradient borders,
 3-finger workspace swipe, special workspace (stands in for minimize).
-Everything lives in one file — **`config/hypr/hyprland.conf`** — and Hyprland
+Everything lives in one file — **`config/hypr/hyprland.lua`** — and Hyprland
 **reloads on save**: no recompile (unlike dwl), no `--reconfigure` (unlike labwc).
+The config is **Lua**, not the old `.conf` format: hyprlang is dropped in Hyprland
+0.57, so the session moved over in August 2026. The old file is kept as
+`hyprland.conf.bak` (the `.bak` extension makes Hyprland ignore it) purely as a
+fallback — while `hyprland.lua` exists, editing the `.bak` does nothing.
 
 ```bash
 sudo dnf install hyprland xdg-desktop-portal-hyprland brightnessctl
@@ -181,17 +186,18 @@ so there is nothing to copy. Log out → pick **Hyprland**.
 
 ### Your monitors
 
-Nothing is hardcoded: `monitor = , preferred, auto, 1` is a catch-all that matches
-any output (`eDP-1`, `HDMI-A-1`, `DP-1`, …), and the persistent workspaces 1–4 carry
-no `monitor:` field, so they follow whatever display you have.
+Nothing is hardcoded: `hl.monitor({ output = "", mode = "preferred", … })` is a
+catch-all that matches any output (`eDP-1`, `HDMI-A-1`, `DP-1`, …), and the
+persistent workspaces 1–8 carry no `monitor` field, so they follow whatever
+display you have.
 
-Multi-monitor or a specific mode/scale? Don't edit `hyprland.conf` — put your lines in
-**`~/.config/hypr/local.conf`**, which `make link` creates and `hyprland.conf` sources
+Multi-monitor or a specific mode/scale? Don't edit `hyprland.lua` — put your lines in
+**`~/.config/hypr/local.lua`**, which `make link` creates and `hyprland.lua` `dofile`s
 last. It is gitignored, so your layout never conflicts on `git pull`:
 
-```conf
-monitor = eDP-1,    1920x1080@60, 0x0,    1
-monitor = HDMI-A-1, 2560x1440@144, 1920x0, 1
+```lua
+hl.monitor({ output = "eDP-1",    mode = "1920x1080@60",  position = "0x0",    scale = 1 })
+hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@144", position = "1920x0", scale = 1 })
 ```
 
 `hyprctl monitors` lists the names your machine reports. `hyprctl reload` applies.
@@ -203,6 +209,31 @@ Verify:
    **Super+Left/Right** move focus; **Super+M** minimize → **Super+Shift+M** brings it back.
 3. Three-finger swipe on the touchpad switches workspaces.
 4. **Super+Shift+4** region screenshot → `~/Pictures`.
+
+### Picture-in-Picture
+
+Two rules, because browsers ship **two different** PiP mechanisms:
+
+| Rule | Fires for | How it is matched |
+|---|---|---|
+| `pip` | classic video PiP (YouTube, Netflix, `<video>`) | title `Picture-in-picture` — the window has **no app-id at all** |
+| `pip-document` | Document PiP API (**Google Meet**, Discord, YouTube Music) | browser class **plus** a `negative:` title match |
+
+Google Meet does not use video PiP. It calls
+`documentPictureInPicture.requestWindow()`, which produces an ordinary HTML
+window: the app-id is a real one (`helium`), and the title is just the page
+title (`Meet – <meeting>`) — it never says "Picture-in-picture". So the `pip`
+rule never fired, and the Meet window stayed at ~954x822, unpinned, disappearing
+whenever you switched workspace.
+
+The only thing separating a doc-PiP window from a normal browser window is that
+the title carries **no ` - Helium` suffix**. Hyprland links **RE2**, which has no
+lookahead, so `(?!…)` is off the table; the rule uses the `negative:` match
+prefix instead. Detached DevTools windows are excluded in the same regex, since
+they are unsuffixed too.
+
+If some other Chromium window ever ends up pinned and tiny, add its title to the
+`negative:` list in `config/hypr/hyprland.lua` — don't add a second rule.
 
 ### The Alt+Tab overlay (snappy-switcher)
 
@@ -267,22 +298,31 @@ wsctl mark N   record N as active without switching (labwc path)
 
 | WM | read (highlight) | write (click) |
 |---|---|---|
-| Hyprland | `.socket2.sock` event stream | `hyprctl dispatch workspace N` |
+| Hyprland | `.socket2.sock` event stream | `hyprctl dispatch 'hl.dsp.focus({workspace=N})'` |
 | labwc | state file, written by `set` / `mark` | `wtype` synthesises Super+N |
-| dwl | not supported (tags, not workspaces) | not supported |
+| dwl | state file, fed by the `autostart.sh` stdin loop | `wtype` synthesises Super+N |
+
+The Hyprland dispatch form follows the **config format, not the version**: with a
+Lua config, `hyprctl dispatch workspace 2` fails (`')' expected near '2'`), so
+`wsctl` tries the Lua form first and falls back to the old one. Queries
+(`clients`, `activeworkspace`, `layers`, `getoption`) are unchanged.
+
+dwl reports tags, not workspaces, so `wsctl` marks the lowest lit tag; the pager
+has 8 labels while dwl has 9 tags, so tag 9 is recorded but lights nothing.
 
 labwc extras: `sudo dnf install wtype`, and every `GoToDesktop` in `rc.xml` is
 paired with `Execute ~/.config/sfwbar/wsctl mark N` so keyboard switches also
 update the bar. Keep the pairs in sync or the highlight drifts.
 
 Changing the glyphs means editing three files: `labwc/rc.xml`
-(`<desktops><names>`), `hypr/hyprland.conf` (`defaultName:`), and
+(`<desktops><names>`), `hypr/hyprland.lua` (`default_name`), and
 `sfwbar/sfwbar.config` (the label `value`s).
 
-**dwl uses an OSD instead of the pager.** Since `wsctl` cannot support tags, the
-dwl session shows a brief centred toast (`󰓩 Tag 3`) on every tag change, driven
+**dwl also gets a tag OSD** — alongside the pager, not instead of it. The dwl
+session shows a brief centred toast (`󰓩 Tag 3`) on every tag change, driven
 by a stdin loop at the bottom of `config/dwl/autostart.sh` reading dwl's own
-status output. It needs no recompile and no bar. Details:
+status output. That same loop is what feeds `wsctl mark`. It needs no recompile
+and no bar. Details:
 [KEYMAP.en.md → Tag OSD](KEYMAP.en.md#tag-osd-dwl-only).
 
 ## Volume & brightness OSD
@@ -313,7 +353,7 @@ so `~/.config/autostart` and `/etc/xdg/autostart` used to be dead files —
 `nm-applet`, `blueman`, `spice-vdagent` and Slack never started.
 `config/scripts/xdg-autostart` is a ~100-line POSIX shell parser called last from
 each session's autostart block (`labwc/autostart`, `dwl/autostart.sh`,
-`hypr/hyprland.conf`), after the five hardcoded daemons are already up.
+`hypr/hyprland.lua`), after the five hardcoded daemons are already up.
 
 `dex` is not packaged for Fedora, and systemd's `xdg-desktop-autostart.target`
 carries `RefuseManualStart=yes` (it needs a session target plus

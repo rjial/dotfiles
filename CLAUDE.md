@@ -363,6 +363,30 @@ ikut kena dan tab browser penuh berubah jadi jendela mungil terpin. `pin on`
 (tampil di semua workspace) hanya berlaku untuk window floating, jadi `float on`
 harus menyertainya.
 
+**Google Meet TIDAK lewat jalur itu** (rule `pip-document`, ditambahkan Agustus
+2026). Meet memakai **Document Picture-in-Picture API**
+(`documentPictureInPicture.requestWindow`) — window HTML biasa, bukan surface
+video. Di `hyprctl clients` bedanya total: `class` TERISI (`helium`, bukan string
+kosong) dan `title` = judul halaman (`Meet – <judul rapat>`), tak pernah berbunyi
+"Picture-in-picture". Jadi rule `pip` tak pernah kena dan window Meet tetap
+~954x822, tak pinned, hilang saat ganti workspace. Situs lain yang memakai API
+sama (Discord, YouTube Music) berperilaku sama.
+
+Pembeda satu-satunya dari window browser normal = **tak ada sufiks nama browser
+di title** (` - Helium`). Karena itu `pip-document` memakai prefiks
+**`negative:`** pada nilai match — didukung 0.56, diverifikasi dgn window umpan
+(`foot -T 'DecoyA - Helium'` tak kena, `foot -T 'DecoyB'` kena). Lookahead
+`(?!…)` **tidak tersedia**: regex engine Hyprland = **RE2**
+(`ldd /usr/bin/Hyprland` memuat `libre2.so.11`), dan RE2 memang tak punya
+lookahead. `negative:` satu-satunya jalan meniadakan.
+
+Konsekuensi yang harus diingat: rule ini menyapu **semua** window Chromium yang
+title-nya tak bersufiks nama browser. DevTools lepas sudah dikecualikan di regex
+yang sama; kalau muncul window lain yang tiba-tiba terpin mungil, tambahkan ke
+daftar `negative:` — jangan bikin rule kedua. `keep_aspect_ratio` sengaja TIDAK
+dipakai di sini (beda dgn `pip`): isi doc-PiP itu HTML yang reflow, bukan video
+rasio tetap.
+
 Validasi setelah edit: `hyprctl reload && hyprctl configerrors` (kosong = bersih).
 Hyprlang sendiri sudah "deprecated in favor of lua" sejak 0.55 — masih jalan penuh
 di 0.56, tapi kalau upstream membuangnya, port berikutnya = `hl.window_rule{…}`
