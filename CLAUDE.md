@@ -24,7 +24,8 @@ config/
   labwc/autostart      # jalankan xremap + swaybg
   labwc/environment    # env var sesi
   labwc/menu.xml       # menu klik-kanan (+ submenu Power)
-  hypr/hyprland.conf   # sesi Hyprland (keybind+env+autostart+efek, satu file)
+  hypr/hyprland.lua    # sesi Hyprland (keybind+env+autostart+efek, satu file)
+  hypr/hyprland.conf.bak # bekas config .conf — INERT, jalur mundur saja
   dwl/config.h         # keybind dwl (compiled in — recompile tiap ubah)
   dwl/config.mk        # flag build dwl (XWayland ON) — recompile tiap ubah
   dwl/autostart.sh     # startup dwl + loop stdin OSD tag
@@ -232,7 +233,7 @@ saja tak cukup untuk clone berikutnya).
 
 ---
 
-# Sesi Hyprland (tiling + efek) — `config/hypr/hyprland.conf`
+# Sesi Hyprland (tiling + efek) — `config/hypr/hyprland.lua`
 
 Compositor ketiga, jalan berdampingan dgn labwc/dwl. Stack pendukung **dibagi**:
 xremap, sfwbar, waypaper, foot, fuzzel — semua config sama, tak ada duplikasi.
@@ -264,16 +265,29 @@ berpindah owner diam-diam. Kalau nanti config pecah lagi tanpa sebab jelas,
 (dialog ANR "aplikasi tak merespons"), `hyprland-update-screen`,
 `hyprland-donate-screen`. Tanpa paket ini Hyprland 0.56 memperingatkan tiap start
 dan ANRManager mati. Konsekuensi setelah dipasang: dua nag yang tadinya diam jadi
-hidup — itu sebabnya `hyprland.conf` menyetel `ecosystem { no_update_news,
+hidup — itu sebabnya `hyprland.lua` menyetel `ecosystem { no_update_news,
 no_donation_nag }`. Alternatif kalau paketnya tak mau dipasang:
 `misc:disable_hyprland_guiutils_check = true` (warning hilang, ANR dialog tetap tak ada).
 
-**Peringatan "jangan pakai .conf" TIDAK ADA.** Yang ada cuma baris log level DEBUG
-`[cfg] Lua config not found, using legacy config at …` — `.conf` tetap didukung
-penuh di 0.56, dimuat lewat legacy config manager. Yang mudah tertukar dengannya:
-banner merah `windowrulev2 is deprecated. Correct syntax can be found on the wiki.`
-Menangkap banner yang keburu hilang: `hyprctl rollinglog | tail -40` atau
-`grep -iE 'deprecat|error' /run/user/1000/hypr/*/hyprland.log | tail`.
+**Batas waktu `.conf`: dihapus di 0.57.** Hyprland 0.56 menampilkan dialog
+`You are using the .conf config format, support for which will be removed in
+Hyprland 0.57.` tiap start sesi. Dialog itu **baru muncul setelah
+`hyprland-guiutils` dipasang** — sebelumnya Hyprland cuma menulis
+`CAsyncDialogBox: cannot create, no hyprland-dialog` lalu diam. Jadi memasang
+guiutils membuka nag ketiga, di luar dua yang dimatikan blok `ecosystem`, dan
+`ecosystem` TIDAK punya opsi untuk membungkamnya (cek `hyprctl getoption`:
+hanya `no_update_news`, `no_donation_nag`, `enforce_permissions`).
+
+Teks peringatan ini hidup di blok string **dialog**, bukan log, jadi
+`grep` di `/run/user/1000/hypr/*/hyprland.log` TIDAK akan menemukannya — log
+hanya memuat baris DEBUG `[cfg] Lua config not found, using legacy config at …`.
+Mencarinya: `strings /usr/bin/Hyprland | grep -n 'will be removed'`.
+Yang mudah tertukar dengannya: banner merah `windowrulev2 is deprecated.`
+Menangkap banner yang keburu hilang: `hyprctl rollinglog | tail -40`.
+
+**Migrasi ke Lua SUDAH DILAKUKAN** (Agustus 2026) — lihat section "Config Lua"
+di bawah. Semua di atas soal syntax rule `.conf` tetap dicatat karena
+`hyprland.conf.bak` masih dipakai sebagai jalur mundur.
 
 `debug:suppress_errors` **jangan dihidupkan** — banner error itu satu-satunya
 gejala yang muncul saat config pecah; rule yang tak kena tak bergejala sama sekali.
@@ -337,9 +351,9 @@ sekali** — window mendarat di posisi/ukuran default, tanpa satu pun pesan erro
 Hanya piksel absolut (`size 480 270`, `move 1420 760`) yang benar-benar dipakai.
 Konsekuensi: `hyprctl keyword … => ok` **bukan** bukti rule bekerja; uji efeknya
 dgn window umpan: `foot -T '<judul>' -- sh -c 'sleep 4'` lalu baca
-`hyprctl clients -j`. Angka piksel yang bergantung resolusi taruh di `local.conf`.
+`hyprctl clients -j`. Angka piksel yang bergantung resolusi taruh di `local.lua`.
 
-**Picture-in-Picture** (`$pip` di blok rules): window PiP Chromium
+**Picture-in-Picture** (rule bernama `pip` di `hyprland.lua`): window PiP Chromium
 (Helium/Thorium) **tak punya app-id** — `class` di `hyprctl clients` betul-betul
 string kosong, jadi match wajib lewat `title`. Judulnya beda kapital antar
 browser: Chromium `Picture-in-picture`, Firefox/Zen `Picture-in-Picture`;
@@ -386,7 +400,7 @@ sebab ringan dan config-nya sekelas foot/fuzzel (ini, bukan CSS GTK). Konsekuens
 
 - Jalan lewat `wlr-layer-shell`, jadi tak butuh IPC compositor apa pun (beda dgn
   snappy-switcher). Autostart di ketiga file: `labwc/autostart`, `dwl/autostart.sh`,
-  `hypr/hyprland.conf`.
+  `hypr/hyprland.lua`.
 - `layer=overlay` supaya toast tetap muncul di atas window fullscreen.
 - `margin=34,14` — 34 = tinggi sfwbar (`min-height: 24px` + padding) + jarak, jadi
   toast tak menutupi menu-bar. **Kalau tinggi sfwbar diubah, ubah angka ini juga.**
@@ -442,7 +456,7 @@ Aturan yang mudah dilanggar:
 - Nama style tombol taskbar = `#taskbar_item` dgn class `.active`. Bukan
   pseudo-class `:active` (itu "sedang ditekan").
 - Glyph workspace harus sama di tiga file: `labwc/rc.xml` `<desktops><names>`,
-  `hypr/hyprland.conf` `defaultName:`, `sfwbar/sfwbar.config` label `value`.
+  `hypr/hyprland.lua` `default_name`, `sfwbar/sfwbar.config` label `value`.
 - labwc: tiap `GoToDesktop` di `rc.xml` WAJIB dipasangkan `Execute wsctl mark N`
   nomor sama, kalau tidak highlight melenceng. `wsctl set` di labwc butuh
   **wtype** (`sudo dnf install wtype`) sebab labwc tak punya IPC perintah —
@@ -553,7 +567,7 @@ BUKAN `wpctl`/`brightnessctl` langsung. Balik ke pemanggilan langsung = OSD hila
 
 Peluncur entri `.desktop` dari `~/.config/autostart` + `/etc/xdg/autostart`.
 Dipanggil **paling akhir** di blok autostart ketiga WM (`labwc/autostart`,
-`dwl/autostart.sh`, `hypr/hyprland.conf`) supaya 5 daemon repo sudah hidup dulu.
+`dwl/autostart.sh`, `hypr/hyprland.lua`) supaya 5 daemon repo sudah hidup dulu.
 Sebelum ini 39 entri `.desktop` di mesin tak pernah dieksekusi sama sekali.
 
 Kenapa script sendiri: **`dex` tak ada di repo Fedora**, dan systemd
@@ -592,9 +606,12 @@ Aturan yang mudah dilanggar:
 `monitor = , preferred, auto, 1` = catch-all, cocok untuk output apa pun. Workspace
 persistent 1-8 sengaja TANPA field `monitor:` supaya ikut display mana pun —
 `workspace = N, persistent:true` (sudah diverifikasi jalan tanpa `monitor:`).
-Override per-mesin masuk `~/.config/hypr/local.conf` (di-`source` paling bawah
-`hyprland.conf`, dibuat otomatis oleh `make link`, di-gitignore). Kalau user minta
-setting monitor spesifik: tulis di `local.conf`, BUKAN di `hyprland.conf`.
+Override per-mesin masuk `~/.config/hypr/local.lua` (di-`dofile` paling bawah
+`hyprland.lua`, dibuat otomatis oleh `make link`, di-gitignore). Kalau user minta
+setting monitor spesifik: tulis di `local.lua`, BUKAN di `hyprland.lua`.
+`hyprland.lua` mengecek keberadaan file itu sebelum `dofile` — `dofile` pada file
+yang tak ada = error fatal, dan config yang gagal dimuat menjatuhkan sesi ke
+**safe mode** (config tak dimuat sama sekali, keybind default `SUPER+Q` = kitty).
 
 Workspace persistent WAJIB ada, kalau tidak swipe 3 jari tampak mati: Hyprland
 cuma geser ke workspace yang sudah eksis (`workspace_swipe_create_new = false`),
@@ -602,7 +619,58 @@ dan tanpa persistent hanya workspace 1 yang eksis. Catatan: `hyprctl reload` tid
 retro-instansiasi workspace persistent (rule dieksekusi saat monitor connect) —
 efek penuh setelah restart sesi.
 
-## Sumber kebenaran
-`config/hypr/hyprland.conf` di repo. Kalau sudah `make link`, file itu = file
-hidup (symlink) → **tak ada langkah salin**, Hyprland auto-reload saat disimpan.
-Paksa reload: `hyprctl reload`. Verifikasi keybind aktif: `hyprctl binds`.
+## Config Lua — `config/hypr/hyprland.lua` (sumber kebenaran)
+
+Sejak Agustus 2026 sesi Hyprland dimuat dari **`hyprland.lua`**, bukan `.conf`.
+`.conf` dibuang di 0.57; file lamanya disimpan sebagai `hyprland.conf.bak`
+(ekstensi `.bak` membuatnya inert — Hyprland tak melihatnya). **Jalur mundur:**
+kalau Lua bermasalah, `mv hyprland.conf.bak hyprland.conf` lalu hapus/rename
+`hyprland.lua`, relog. Selama `hyprland.lua` ada, mengedit `.bak` tak berefek
+apa pun — kesalahan yang mudah terjadi setelah beberapa bulan.
+
+Penemuan nama config otomatis: `~/.config/hypr/hyprland.lua` menang tanpa flag
+apa pun (diverifikasi lewat instance bersarang tanpa `-c`: log berbunyi
+`[cfg] Using lua config found at …`). Tak ada langkah salin — `make link` sudah
+men-symlink dirnya, dan Hyprland auto-reload saat file disimpan.
+
+**`hyprctl dispatch` mengikuti FORMAT CONFIG, bukan versi Hyprland.** Di sesi
+ber-config Lua, argumen dispatch di-parse sebagai Lua:
+`hyprctl dispatch workspace 2` gagal dgn `')' expected near '2'`, yang benar
+`hyprctl dispatch 'hl.dsp.focus({workspace=2})'` (hyprctl membungkusnya sendiri
+dgn `hl.dispatch(...)`, jadi JANGAN tulis `hl.dispatch(...)` — dobel-bungkus =
+`expected a dispatcher`). Itu memutus `sfwbar/wsctl`; `hypr_set()` sekarang
+mencoba bentuk Lua dulu lalu jatuh ke bentuk lama. Script lain yang memanggil
+`hyprctl dispatch` harus ikut aturan ini. Query (`clients`, `getoption`,
+`activeworkspace`, `layers`) TIDAK berubah.
+
+Menguji perubahan tanpa mempertaruhkan sesi: jalankan Hyprland **bersarang**
+(`HYPR_TEST=1 Hyprland -c <file>` membuka window sendiri di dalam sesi aktif),
+lalu `hyprctl -i <signature> {configerrors,binds,getoption,clients}`.
+`HYPR_TEST=1` dibaca `hyprland.lua` untuk melewati blok autostart — tanpa itu
+instance uji menyalakan xremap/sfwbar/mako kedua yang berebut input.
+Instance uji ditutup dgn `hyprctl -i <sig> dispatch 'hl.dsp.exit()'`.
+
+Padanan bentuk `.conf` -> Lua yang tak jelas ditebak (semua diverifikasi lewat
+`hyprctl -i <sig> eval`, yang HANYA jalan di instance ber-config Lua):
+
+| `.conf` | Lua |
+|---|---|
+| `bind = SUPER, Q, killactive` | `hl.bind("SUPER + Q", hl.dsp.window.close())` |
+| `fullscreen, 1` / `fullscreen, 0` | `hl.dsp.window.fullscreen({ mode = "maximized" })` / `{ mode = "fullscreen" }` |
+| `resizeactive, -60 0` | `hl.dsp.window.resize({ x = -60, y = 0, relative = true })` |
+| `movetoworkspacesilent, special:x` | `hl.dsp.window.move({ workspace = "special:x", silent = true })` |
+| `movewindow, l` | `hl.dsp.window.move({ direction = "left" })` |
+| `focusmonitor, -1` | `hl.dsp.focus({ monitor = "-1" })` |
+| `movecurrentworkspacetomonitor, -1` | `hl.dsp.workspace.move({ monitor = "-1" })` |
+| `layoutmsg, togglesplit` | `hl.dsp.layout("togglesplit")` |
+| `bindel` / `bindl` | opsi ke-3 `{ locked = true, repeating = true }` / `{ locked = true }` |
+| `windowrule = match:class ^(x)$, float on` | `hl.window_rule({ name = "…", match = { class = "^(x)$" }, float = true })` |
+| `$mod, grave` dua baris berturut | Lua: bind kedua MENGGANTI yang pertama — gabungkan jadi satu `function() … end` |
+
+Pesan error `eval` menyebutkan bentuk tabel yang sah (mis. `hl.window.resize:
+expected … a table { x, y, relative?, window? }`), jadi menebak nama field tak
+perlu: panggil, baca keluhannya. `hl.window_rule` WAJIB punya `name` unik.
+
+Yang TIDAK dipakai lagi dari catatan `.conf`: `$var` hyprlang (di Lua pakai
+variabel Lua biasa), `source =` (pakai `dofile`), dan `exec-once` (pakai
+`hl.on("hyprland.start", …)` + `hl.exec_cmd`).

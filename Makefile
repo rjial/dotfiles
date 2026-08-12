@@ -28,17 +28,21 @@ help:
 	@echo "make status   tampilkan status tiap symlink"
 
 link:
-	@# Hyprland `source = ~/.config/hypr/local.conf` error kalau file tak ada.
-	@# Bikin kosong (sekali) — isinya override per-mesin, tak di-track git.
-	@[ -f "$(DOTFILES)/config/hypr/local.conf" ] || { \
+	@# Override per-mesin untuk config Lua Hyprland. hyprland.lua memeriksa
+	@# keberadaan file ini sebelum dofile(), jadi absennya tak fatal — tetap
+	@# dibuat supaya jelas di mana tempat menulis override. Tak di-track git.
+	@[ -f "$(DOTFILES)/config/hypr/local.lua" ] || { \
 	  printf '%s\n' \
-	    '# Override per-mesin — TIDAK di-track git.' \
-	    '# Tulis `monitor = ...` di sini untuk multi-monitor / skala khusus.' \
-	    '# Contoh:' \
-	    '#   monitor = eDP-1,   1920x1080@60, 0x0,    1' \
-	    '#   monitor = HDMI-A-1,1920x1080@60, 1920x0, 1' \
-	    > "$(DOTFILES)/config/hypr/local.conf"; \
-	  echo "create  config/hypr/local.conf (override per-mesin)"; }
+	    '-- Override per-mesin — TIDAK di-track git.' \
+	    '-- Contoh monitor ganda:' \
+	    '--   hl.monitor({ output = "eDP-1",    mode = "1920x1080@60", position = "0x0",    scale = 1 })' \
+	    '--   hl.monitor({ output = "HDMI-A-1", mode = "1920x1080@60", position = "1920x0", scale = 1 })' \
+	    '-- Contoh posisi PiP untuk resolusi selain 1920x1080 (rule belakangan menang):' \
+	    '--   hl.window_rule({ name = "pip-local",' \
+	    '--       match = { title = "^([Pp]icture[- ][Ii]n[- ][Pp]icture)$$" },' \
+	    '--       move  = "1000 500" })' \
+	    > "$(DOTFILES)/config/hypr/local.lua"; \
+	  echo "create  config/hypr/local.lua (override per-mesin)"; }
 	@for d in $(DIRS); do \
 	  src="$(DOTFILES)/config/$$d"; dst="$(CONFIG)/$$d"; \
 	  if [ -e "$$dst" ] && [ ! -L "$$dst" ]; then \

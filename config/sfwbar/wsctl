@@ -125,6 +125,19 @@ def hypr_watch():
 
 
 def hypr_set(ws):
+    # `hyprctl dispatch` mengikuti FORMAT CONFIG instance-nya, bukan versi
+    # Hyprland: instance ber-config Lua mem-parse argumen dispatch sebagai Lua
+    # (`hyprctl dispatch workspace 2` -> "')' expected near '2'"), sedangkan
+    # instance ber-config .conf hanya mengerti bentuk lama. Sesi mesin ini sudah
+    # Lua, tapi bentuk lama tetap dicoba sebagai cadangan supaya script ini tak
+    # pecah di mesin/sesi yang masih .conf. Kegagalan terlihat di stdout ("error:
+    # ...") DAN exit code, jadi dua-duanya diperiksa.
+    lua = subprocess.run(
+        ["hyprctl", "dispatch", "hl.dsp.focus({workspace=%d})" % int(ws)],
+        capture_output=True, text=True,
+    )
+    if lua.returncode == 0 and "error" not in (lua.stdout or "").lower():
+        return
     subprocess.run(["hyprctl", "dispatch", "workspace", str(ws)],
                    capture_output=True)
 

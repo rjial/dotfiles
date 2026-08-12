@@ -22,3 +22,4 @@ config/dwl/*-protocol.h
 
 # Hyprland override per-mesin (monitor/skala) — dibuat otomatis oleh `make link`
 config/hypr/local.conf
+config/hypr/local.lua
