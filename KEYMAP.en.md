@@ -7,7 +7,7 @@
 Three compositors installed side by side, picked at login (SDDM):
 - **labwc** (`config/labwc/rc.xml`) — stacking/floating. Manual snap. Runtime reload.
 - **dwl** (`config/dwl/config.h`) — tiling (dwm-style). Compiled. Recompile on each change.
-- **Hyprland** (`config/hypr/hyprland.conf`) — tiling + effects. Reloads on save.
+- **Hyprland** (`config/hypr/hyprland.lua`) — tiling + effects. Reloads on save.
 
 The **xremap** layer (`config/xremap/config.yml`) is **shared** by all three — it remaps
 app-shortcut letters `Super+` into `Ctrl+` so GUI apps feel mac-like.
@@ -128,9 +128,11 @@ which collides with move-to-tag).
 ### Tag OSD (dwl only)
 
 Every tag switch shows a brief OSD in the centre of the screen (`󰓩 Tag 3`).
-This stands in for a pager: sfwbar's pager widget does **not** track dwl tags
-(dwl uses tags, not ext-workspace), so without the OSD there is no visual
-indication at all.
+The OSD now **complements** the pager rather than replacing it: since `wsctl`
+gained dwl support, the sfwbar pager is driven by the same stdin loop. sfwbar's
+built-in `pager` widget still never tracked dwl tags — `config/sfwbar/wsctl` is
+what does. The pager has 8 labels while dwl has 9 tags, so tag 9 is recorded but
+lights nothing; there the OSD is the only indication.
 
 How it works, since this differs from labwc/Hyprland: dwl pipes its stdout into
 `autostart.sh`'s **stdin** (`dwl.c:2254-2271`), and `printstatus()` emits a
@@ -173,7 +175,7 @@ Screenshots & media keys in dwl are the **same** as labwc (see above):
 
 `dwindle` tiling. The labwc keymap is kept wherever it still makes sense; only the
 binds that mean nothing under tiling (snap) or don't exist in Hyprland (minimize)
-changed. Everything lives in one file, `config/hypr/hyprland.conf`, which
+changed. Everything lives in one file, `config/hypr/hyprland.lua`, which
 **reloads on save**.
 
 ## Window management (Hyprland)
@@ -203,7 +205,7 @@ changed. Everything lives in one file, `config/hypr/hyprland.conf`, which
 
 > **The switcher overlay is Hyprland-only.** snappy-switcher reads the window list
 > and MRU order over Hyprland IPC, so `Alt+Tab` stays a plain cycle on labwc/dwl.
-> The daemon comes from `exec-once = snappy-wrapper`; if it dies, `Super+` `` ` ``
+> The daemon comes from `hl.on("hyprland.start", …)` + `hl.exec_cmd("snappy-wrapper")`; if it dies, `Super+` `` ` ``
 > still works. Config: `config/snappy-switcher/config.ini`.
 
 ## Workspaces (Hyprland — 8 desktops, mac Spaces)
@@ -241,7 +243,7 @@ Screenshots & media keys on Hyprland are **identical** to labwc (see above):
 
 dwindle auto-tiling · macOS-ish bezier animations · blur + shadow + `rounding 8`
 (matching labwc's `cornerRadius`) · Catppuccin Frappé gradient border (surface2 → teal)
-· 3-finger `workspace_swipe` · `special:minimized` · `layerrule blur` for
+· 3-finger `hl.gesture` swipe · `special:minimized` · `hl.layer_rule` blur for
 sfwbar/fuzzel · `resize_on_border` · `follow_mouse=0` (click-to-focus, same as labwc)
 · `ELECTRON_OZONE_PLATFORM_HINT=auto` (Chromium/Electron on native Wayland).
 
@@ -371,16 +373,20 @@ Notes:
 
 ## Editing keybinds
 
-Source of truth = files under `config/`:
-- labwc window/system: `config/labwc/rc.xml` → deploy to `~/.config/` → `labwc --reconfigure`
+Source of truth = files under `config/`. After `make link`, every directory in
+`DIRS` (`Makefile:15`) is symlinked into `~/.config/`, so there is **nothing to
+copy** — except dwl, which has to be recompiled in its upstream clone.
+- labwc window/system: `config/labwc/rc.xml` → `labwc --reconfigure`
 - dwl window/system: `config/dwl/config.h` → copy to `~/Dokumen/dwl/` → **recompile**
   (`make CC=clang && sudo make install`) → log out/in. No runtime reload.
-- Hyprland window/system: `config/hypr/hyprland.conf` → **reloads on save** (nothing
-  to copy once `make link` is done). Force it with `hyprctl reload`.
+- Hyprland window/system: `config/hypr/hyprland.lua` → **reloads on save**. Force it
+  with `hyprctl reload`; check the result with `hyprctl configerrors` (empty = clean).
 - App remap (shared): `config/xremap/config.yml` → restart xremap
 
 > Before adding a compositor keybind, check the key isn't eaten by xremap. What's
 > left safe: `q m h space Return Tab grave arrows 0-9 period slash [ ] Print`
 > plus any `Ctrl+Super+*` / `Alt+Super+*` combo (xremap matches modifiers exactly).
 
-After editing, re-deploy to the live location then reload/recompile.
+dwl is the exception: `config.h` **and** `config.mk` get copied into
+`~/Dokumen/dwl/` and recompiled — neither is symlinked, because that directory is
+an upstream git clone.

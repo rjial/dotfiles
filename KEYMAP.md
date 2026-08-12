@@ -7,7 +7,7 @@
 Tiga compositor terpasang berdampingan, pilih saat login (SDDM):
 - **labwc** (`config/labwc/rc.xml`) — stacking/floating. Snap manual. Reload runtime.
 - **dwl** (`config/dwl/config.h`) — tiling (dwm-style). Compiled. Recompile tiap ubah.
-- **Hyprland** (`config/hypr/hyprland.conf`) — tiling + efek. Auto-reload saat file disimpan.
+- **Hyprland** (`config/hypr/hyprland.lua`) — tiling + efek. Auto-reload saat file disimpan.
 
 Lapisan **xremap** (`config/xremap/config.yml`) di-**share** ketiganya — remap huruf
 shortcut aplikasi `Super+` menjadi `Ctrl+` supaya GUI app terasa mac-like.
@@ -126,8 +126,11 @@ karena bentrok dgn pindah-tag).
 ### OSD tag (hanya dwl)
 
 Tiap perpindahan tag memunculkan OSD singkat di tengah layar (`󰓩 Tag 3`).
-Ini pengganti pager: widget pager sfwbar **tidak** melacak tag dwl (dwl pakai
-tags, bukan ext-workspace), jadi tanpa OSD tak ada indikasi visual sama sekali.
+OSD ini **pelengkap** pager, bukan penggantinya: sejak `wsctl` mendukung dwl,
+pager sfwbar ikut menyala dari loop stdin yang sama. Widget `pager` bawaan sfwbar
+memang tak pernah melacak tag dwl — yang dipakai `config/sfwbar/wsctl`. Pager
+punya 8 label sedangkan dwl punya 9 tag, jadi tag 9 dicatat tapi tak menyalakan
+label apa pun; di situ OSD satu-satunya indikasi.
 
 Cara kerjanya, karena ini beda dari labwc/Hyprland: dwl mem-pipe stdout-nya ke
 **stdin** `autostart.sh` (`dwl.c:2254-2271`), dan `printstatus()` mengirim baris
@@ -168,7 +171,7 @@ Screenshot & media key dwl = **sama** dgn labwc (lihat atas): `Print` (+Ctrl/Shi
 
 Tiling `dwindle`. Keymap labwc dipertahankan sejauh masuk akal; yang berubah cuma
 yang tak punya arti di tiling (snap) atau tak ada di Hyprland (minimize).
-Semua di satu file `config/hypr/hyprland.conf`, **auto-reload saat disimpan**.
+Semua di satu file `config/hypr/hyprland.lua`, **auto-reload saat disimpan**.
 
 ## Window management (Hyprland)
 
@@ -197,7 +200,7 @@ Semua di satu file `config/hypr/hyprland.conf`, **auto-reload saat disimpan**.
 
 > **Switcher overlay hanya di Hyprland.** snappy-switcher membaca daftar window
 > + urutan MRU lewat Hyprland IPC, jadi di labwc/dwl `Alt+Tab` tetap cycle biasa.
-> Daemon dijalankan `exec-once = snappy-wrapper`; kalau mati, `Super+` `` ` ``
+> Daemon dijalankan `hl.on("hyprland.start", …)` + `hl.exec_cmd("snappy-wrapper")`; kalau mati, `Super+` `` ` ``
 > tetap bekerja. Config: `config/snappy-switcher/config.ini`.
 
 ## Workspaces (Hyprland — 8 desktop, mac Spaces)
@@ -235,7 +238,7 @@ Screenshot & media key Hyprland = **sama persis** dgn labwc (lihat atas):
 
 dwindle auto-tile · animasi bezier ala macOS · blur + shadow + `rounding 8`
 (sinkron `cornerRadius` labwc) · gradient border Catppuccin Frappé (surface2 → teal)
-· `workspace_swipe` 3 jari · `special:minimized` · `layerrule blur` untuk
+· `hl.gesture` swipe 3 jari · `special:minimized` · `hl.layer_rule` blur untuk
 sfwbar/fuzzel · `resize_on_border` · `follow_mouse=0` (click-to-focus, sama labwc)
 · `ELECTRON_OZONE_PLATFORM_HINT=auto` (Chromium/Electron native Wayland).
 
@@ -363,16 +366,19 @@ Catatan:
 
 ## Edit keybind
 
-Sumber kebenaran = file di `config/`:
-- labwc window/sistem: `config/labwc/rc.xml` → salin ke `~/.config/` → `labwc --reconfigure`
+Sumber kebenaran = file di `config/`. Setelah `make link`, seluruh dir di
+`DIRS` (`Makefile:15`) sudah di-symlink ke `~/.config/`, jadi **tak ada langkah
+salin** — kecuali dwl, yang butuh recompile di clone upstream-nya.
+- labwc window/sistem: `config/labwc/rc.xml` → `labwc --reconfigure`
 - dwl window/sistem: `config/dwl/config.h` → salin ke `~/Dokumen/dwl/` → **recompile**
   (`make CC=clang && sudo make install`) → logout/login. Tak ada reload runtime.
-- Hyprland window/sistem: `config/hypr/hyprland.conf` → **auto-reload saat disimpan**
-  (kalau sudah `make link`, tak perlu salin apa pun). Paksa reload: `hyprctl reload`.
+- Hyprland window/sistem: `config/hypr/hyprland.lua` → **auto-reload saat disimpan**.
+  Paksa reload: `hyprctl reload`; cek hasilnya: `hyprctl configerrors` (kosong = bersih).
 - App remap (shared): `config/xremap/config.yml` → restart xremap
 
 > Sebelum menambah keybind compositor: cek dulu tombolnya tidak dimakan xremap.
 > Sisa yang aman = `q m h space Return Tab grave panah 0-9 period slash [ ] Print`
 > + semua kombinasi `Ctrl+Super+*` / `Alt+Super+*` (xremap exact-match).
 
-Abis edit, salin ulang ke lokasi pakai lalu reload/recompile.
+Khusus dwl: `config.h` **dan** `config.mk` disalin ke `~/Dokumen/dwl/` lalu
+recompile — dua file itu tak di-symlink karena folder itu clone git upstream.
