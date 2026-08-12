@@ -233,6 +233,37 @@ hl.window_rule({
     no_initial_focus  = true,                            -- jangan curi fokus
 })
 
+-- Google Meet TIDAK memakai video-PiP di atas; ia memakai **Document
+-- Picture-in-Picture API** (`documentPictureInPicture.requestWindow`) — window
+-- HTML biasa, bukan surface video. Konsekuensi yang terlihat di `hyprctl clients`:
+--   * `class` TERISI ("helium"), bukan string kosong spt video-PiP;
+--   * `title` = judul halaman ("Meet – <judul rapat>") TANPA sufiks " - Helium";
+--   * ukuran ~954x822 dan tidak pinned.
+-- Jadi rule "pip" di atas tak pernah kena, dan window PiP Meet hilang begitu
+-- ganti workspace — itu gejala yang dilaporkan user.
+--
+-- Pembeda satu-satunya dari window browser normal = sufiks nama browser di
+-- title. Karena itu match memakai prefiks **`negative:`** (didukung 0.56,
+-- diverifikasi dgn window umpan foot). Regex engine Hyprland = **RE2**
+-- (`ldd /usr/bin/Hyprland` -> libre2), jadi lookahead `(?!…)` TIDAK ADA —
+-- `negative:` inilah satu-satunya jalan meniadakan.
+-- DevTools ikut dikecualikan: window DevTools lepas juga tak bersufiks browser.
+-- Tanpa keep_aspect_ratio — isi doc-PiP HTML yang reflow, bukan video rasio tetap.
+-- 640x360 di sudut kanan-bawah: 1260+640=1900, 670+360=1030 (sfwbar mulai 1056).
+hl.window_rule({
+    name  = "pip-document",
+    match = {
+        class = "^(helium|thorium|chromium|brave|google-chrome)$",
+        title = "negative:^(.*(- Helium|- Thorium|- Chromium|- Brave|- Google Chrome)|DevTools.*)$",
+    },
+
+    float            = true,
+    pin              = true,
+    size             = "640 360",
+    move             = "1260 670",
+    no_initial_focus = true,
+})
+
 -- SourceGit (Avalonia, XWayland) memakai CSD: shadow + margin transparan dicat
 -- SENDIRI DI DALAM surface-nya. Geometri Hyprland normal, jadi bukan gaps yang
 -- salah — padding gelap itu isi window. no_blur menghentikan blur menembus
