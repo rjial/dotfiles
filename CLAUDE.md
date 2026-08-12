@@ -248,9 +248,35 @@ gesture). Trade-off: paket lebih besar, bukan wlroots murni (Hyprland fork
 sudo dnf install hyprland xdg-desktop-portal-hyprland brightnessctl
 make link          # symlink config/hypr -> ~/.config/hypr
 ```
-Fedora 42 repo = `hyprland 0.45.2`. Session entry `.desktop` **ikut paket**
+Session entry `.desktop` **ikut paket**
 (`/usr/share/wayland-sessions/hyprland.desktop`) — jangan bikin sendiri (beda
 dgn labwc/dwl yang perlu `sudo cp ... /usr/share/wayland-sessions/`).
+
+**Hyprland TIDAK ada di repo Fedora 43** (dulu ada di F42 = 0.45.2). `dnf install
+hyprland` polos gagal; paket di mesin ini dari COPR **ashbuk/Hyprland-Fedora**
+(cek: `rpm -q --qf '%{vendor}' hyprland`). COPR **sdegler/hyprland** juga dipasang
+untuk `hyprland-guiutils`, dan ia MENYEDIAKAN `hyprland` dgn evr identik
+(0.56.2-1.fc43) — dua repo, versi sama persis, jadi pemenang upgrade bisa
+berpindah owner diam-diam. Kalau nanti config pecah lagi tanpa sebab jelas,
+`rpm -q --qf '%{vendor}'` dulu sebelum menyalahkan config.
+
+`hyprland-guiutils` (nama lama: `hyprland-qtutils`) menyuplai `hyprland-dialog`
+(dialog ANR "aplikasi tak merespons"), `hyprland-update-screen`,
+`hyprland-donate-screen`. Tanpa paket ini Hyprland 0.56 memperingatkan tiap start
+dan ANRManager mati. Konsekuensi setelah dipasang: dua nag yang tadinya diam jadi
+hidup — itu sebabnya `hyprland.conf` menyetel `ecosystem { no_update_news,
+no_donation_nag }`. Alternatif kalau paketnya tak mau dipasang:
+`misc:disable_hyprland_guiutils_check = true` (warning hilang, ANR dialog tetap tak ada).
+
+**Peringatan "jangan pakai .conf" TIDAK ADA.** Yang ada cuma baris log level DEBUG
+`[cfg] Lua config not found, using legacy config at …` — `.conf` tetap didukung
+penuh di 0.56, dimuat lewat legacy config manager. Yang mudah tertukar dengannya:
+banner merah `windowrulev2 is deprecated. Correct syntax can be found on the wiki.`
+Menangkap banner yang keburu hilang: `hyprctl rollinglog | tail -40` atau
+`grep -iE 'deprecat|error' /run/user/1000/hypr/*/hyprland.log | tail`.
+
+`debug:suppress_errors` **jangan dihidupkan** — banner error itu satu-satunya
+gejala yang muncul saat config pecah; rule yang tak kena tak bergejala sama sekali.
 
 ## Aturan menulis keybind (SAMA seperti dwl — batasan xremap)
 xremap makan `Super+<huruf>` ini: `a b c d e f g i j k l n o p r s t u v w x y z
@@ -303,6 +329,25 @@ ada dan tetap dipakai; yang pindah cuma "hidup/mati" + jumlah jari.
 gtk-layer-shell). Rule blur bar lama karena itu tak pernah kena sejak awal —
 catatan lama yang bilang bar diblur: SALAH, sudah diralat. fuzzel = `launcher`
 (benar). Selalu cek dgn `hyprctl layers` sebelum menulis layerrule.
+
+**Persen dan prefiks posisi MATI di rule 0.56.** `size 25% 25%`,
+`move 100%-500 100%-320`, `move 100%-w-20 …`, `move onscreen …`, `move cursor …`
+semuanya lolos parse (`hyprctl keyword` menjawab `ok`) lalu **tak berefek sama
+sekali** — window mendarat di posisi/ukuran default, tanpa satu pun pesan error.
+Hanya piksel absolut (`size 480 270`, `move 1420 760`) yang benar-benar dipakai.
+Konsekuensi: `hyprctl keyword … => ok` **bukan** bukti rule bekerja; uji efeknya
+dgn window umpan: `foot -T '<judul>' -- sh -c 'sleep 4'` lalu baca
+`hyprctl clients -j`. Angka piksel yang bergantung resolusi taruh di `local.conf`.
+
+**Picture-in-Picture** (`$pip` di blok rules): window PiP Chromium
+(Helium/Thorium) **tak punya app-id** — `class` di `hyprctl clients` betul-betul
+string kosong, jadi match wajib lewat `title`. Judulnya beda kapital antar
+browser: Chromium `Picture-in-picture`, Firefox/Zen `Picture-in-Picture`;
+regex `^([Pp]icture[- ][Ii]n[- ][Pp]icture)$` menampung keduanya. Anchor `^…$`
+WAJIB — tanpa itu judul halaman biasa ("Picture-in-Picture Sample - Helium")
+ikut kena dan tab browser penuh berubah jadi jendela mungil terpin. `pin on`
+(tampil di semua workspace) hanya berlaku untuk window floating, jadi `float on`
+harus menyertainya.
 
 Validasi setelah edit: `hyprctl reload && hyprctl configerrors` (kosong = bersih).
 Hyprlang sendiri sudah "deprecated in favor of lua" sejak 0.55 — masih jalan penuh
