@@ -1,4 +1,4 @@
-# macOS-style Wayland dotfiles — labwc + dwl + Hyprland (Fedora 42)
+# macOS-style Wayland dotfiles — labwc + dwl + Hyprland (Fedora 43)
 
 ![Desktop preview](assets/preview.png)
 
@@ -56,7 +56,8 @@ CLAUDE.md              # deploy/architecture notes
 # base — all in Fedora repos
 sudo dnf install labwc fuzzel foot grim slurp swaybg wl-clipboard sfwbar waypaper mako swaylock
 
-# Hyprland session (optional — see step 6)
+# Hyprland session (optional — see step 6). NOT in the Fedora 43 repos:
+sudo dnf copr enable ashbuk/Hyprland-Fedora
 sudo dnf install hyprland xdg-desktop-portal-hyprland brightnessctl
 
 # xremap — NOT in repos. COPR (preferred):
@@ -135,7 +136,7 @@ sudo dnf install clang make pkgconf-pkg-config lld \
   wlroots-devel wayland-devel wayland-protocols-devel \
   libinput-devel libxkbcommon-devel pixman-devel libdrm-devel
 
-# clone (branch main targets wlroots 0.19, matching Fedora 42's runtime)
+# clone (branch main targets wlroots 0.19, matching Fedora 43's 0.19.3 runtime)
 git clone https://codeberg.org/dwl/dwl ~/Dokumen/dwl
 
 # use this repo's config.h, then compile
@@ -177,9 +178,21 @@ The config is **Lua**, not the old `.conf` format: hyprlang is dropped in Hyprla
 fallback — while `hyprland.lua` exists, editing the `.bak` does nothing.
 
 ```bash
+# Fedora 43 dropped Hyprland from its repos (F42 shipped 0.45.2), so it comes
+# from COPR. This machine runs 0.56.2 from ashbuk; hyprland-guiutils, which
+# supplies hyprland-dialog (the ANR "application not responding" prompt), comes
+# from sdegler. Both COPRs provide `hyprland` at the same evr, so check
+# `rpm -q --qf '%{vendor}' hyprland` before blaming the config for odd breakage.
+sudo dnf copr enable ashbuk/Hyprland-Fedora
 sudo dnf install hyprland xdg-desktop-portal-hyprland brightnessctl
+sudo dnf copr enable sdegler/hyprland
+sudo dnf install hyprland-guiutils
 make link          # symlinks config/hypr -> ~/.config/hypr
 ```
+
+Installing `hyprland-guiutils` wakes up nag dialogs that were silently skipped
+without it, which is why `hyprland.lua` sets `ecosystem { no_update_news,
+no_donation_nag }`.
 
 The SDDM session entry ships with the package (`/usr/share/wayland-sessions/hyprland.desktop`),
 so there is nothing to copy. Log out → pick **Hyprland**.

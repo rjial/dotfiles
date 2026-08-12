@@ -1,6 +1,6 @@
 # CLAUDE.md — macOS-style Config Deployment (labwc / dwl / Hyprland)
 
-> **Untuk sesi Claude Code yang berjalan di mesin Fedora 42 milik user (rjial).**
+> **Untuk sesi Claude Code yang berjalan di mesin Fedora 43 milik user (rjial).**
 > Sesi ini punya akses langsung ke `~/.config/`, `dnf`, dan compositor-nya. Repo
 > ini berisi config siap-pakai untuk tiga compositor; tugasmu adalah men-deploy-nya
 > ke mesin ini dan memandu setup sampai shortcut ala macOS berfungsi.
