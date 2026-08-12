@@ -272,9 +272,42 @@ screenshot, media key.
 
 ## Fitur Hyprland yg dipakai (jangan dibuang saat refactor)
 dwindle · animasi bezier `macEase`/`macOut` · blur+shadow+`rounding 8` (sinkron
-`cornerRadius` labwc) · gradient border surface2→teal · `workspace_swipe` 3 jari
+`cornerRadius` labwc) · gradient border surface2→teal · swipe workspace 3 jari
 · `special:minimized` · `layerrule blur` untuk sfwbar & fuzzel · `resize_on_border`
-· `follow_mouse = 0` (click-to-focus, mac-like, sama labwc) · `misc:vfr`.
+· `follow_mouse = 0` (click-to-focus, mac-like, sama labwc) · VFR.
+
+## Hyprland 0.56 (Fedora 43) — syntax yang berubah dari 0.45
+
+Upgrade F42→F43 melompat 0.45.2 → 0.56.2 dan memutus 17 baris config. Yang benar
+sekarang (semua diverifikasi lewat `hyprctl keyword <kw> '<isi>'`: balasan `ok` =
+sah, `invalid field type <x>` = nama field salah):
+
+| Lama (0.45) | Sekarang (0.56) |
+|---|---|
+| `windowrulev2 = float, class:^(x)$` | `windowrule = match:class ^(x)$, float on` |
+| `windowrulev2 = noshadow/noblur, …` | field jadi `no_shadow on` / `no_blur on` |
+| `layerrule = blur, sfwbar` | `layerrule = match:namespace ^(y)$, blur on` |
+| `layerrule = ignorezero, …` | `ignore_alpha 0` |
+| `gestures { workspace_swipe = true; workspace_swipe_fingers = 3 }` | `gesture = 3, horizontal, workspace` |
+| `misc:vfr = true` | `debug:vfr`, default 1 — tak usah ditulis |
+| `dwindle:pseudotile = true` | dihapus; pseudotile = state per-window (dispatcher `pseudo`) |
+| `bind = …, togglesplit` | `bind = …, layoutmsg, togglesplit` |
+
+Aturan umum bentuk baru: **tiap field WAJIB bernilai** (`float on`, bukan `float`)
+dan matcher dipisah dgn prefix `match:`. Bentuk lama `windowrule = float, class:…`
+(tanpa v2) juga TIDAK sah lagi — bukan cuma `windowrulev2` yang mati.
+Sisa opsi `gestures { workspace_swipe_distance/invert/forever/create_new }` tetap
+ada dan tetap dipakai; yang pindah cuma "hidup/mati" + jumlah jari.
+
+**Namespace layer sfwbar = `gtk-layer-shell`, BUKAN `sfwbar`** (default library
+gtk-layer-shell). Rule blur bar lama karena itu tak pernah kena sejak awal —
+catatan lama yang bilang bar diblur: SALAH, sudah diralat. fuzzel = `launcher`
+(benar). Selalu cek dgn `hyprctl layers` sebelum menulis layerrule.
+
+Validasi setelah edit: `hyprctl reload && hyprctl configerrors` (kosong = bersih).
+Hyprlang sendiri sudah "deprecated in favor of lua" sejak 0.55 — masih jalan penuh
+di 0.56, tapi kalau upstream membuangnya, port berikutnya = `hl.window_rule{…}`
+(stub API: `/usr/share/hypr/stubs/hl.meta.lua`, contoh `/usr/share/hypr/hyprland.lua`).
 
 ## snappy-switcher — overlay Alt+Tab (Hyprland saja)
 
