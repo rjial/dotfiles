@@ -389,3 +389,27 @@ bisa dipastikan tanpa sesi Hyprland hidup + dialog itu benar-benar muncul
   Rujuk `config/hypr/hyprland.lua` langsung sbg sumber kebenaran keybind.
 - `assets/preview.png` juga masih screenshot dari setup Fedora/labwc lama —
   ganti kalau sudah ada screenshot rice baru di mesin ini.
+
+## Gotcha nyata: ganti sesi GNOME → Hyprland di TTY yang sama tanpa logout penuh
+
+Mesin ini punya dua sesi (GNOME harian + Hyprland rice). Kalau beralih dari
+GNOME ke Hyprland TANPA logout penuh (mis. switch sesi di layar login yang
+mendaur-ulang TTY yang sama alih-alih membuka TTY baru), proses `xremap`
+milik sesi GNOME lama (`xremap-gnome-bin`, baca
+`~/.config/gnome-macos-remap/config.yml`) bisa **tetap hidup** — persis
+seperti gejala "Duplicate helpers leaking across sessions" yg sudah dicatat
+di `master` README, tapi di sini pemicunya lintas-WM (GNOME→Hyprland), bukan
+dua sesi WM yang sama. Dua instance xremap (lama + `xremap-hypr` baru) lalu
+rebutan `EVIOCGRAB` atas keyboard/mouse fisik yang sama → **semua keybind
+Hyprland maupun remap xremap jadi tak berfungsi/erratic**, padahal
+`hyprctl configerrors` kosong dan `hyprctl binds` menunjukkan binding
+terdaftar normal (config-nya SEHAT, masalahnya di lapisan input device).
+
+Diagnosa: `grep -c 'Name="xremap' /proc/bus/input/devices` — kalau hasilnya
+**>1**, ada xremap ganda. Cocokkan tiap device sama proses lewat
+`pgrep -af xremap` (cek config yg dibaca tiap PID — `gnome-macos-remap` vs
+`xremap/config.yml` jadi penanda sesi mana yg basi).
+
+Perbaikan: `kill <PID xremap sesi lama>` — device virtualnya ikut hilang
+otomatis begitu prosesnya mati, tak perlu langkah lain. Keybind pulih
+seketika setelah itu, tanpa restart Hyprland.
