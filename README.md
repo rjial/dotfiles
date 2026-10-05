@@ -189,7 +189,9 @@ Checklist verifikasi:
 3. Smart terminal: di foot, seleksi teks → **Super+C** copy; `sleep 100` →
    **Ctrl+C** interrupt (SIGINT).
 4. Window: **Super+Space** fuzzel; **Super+Q** close; **Super+1..8** ganti
-   workspace (bar menampilkan I..VIII); **Super+Shift+4** screenshot region.
+   workspace (bar menampilkan I..VIII); **Shift+Print** screenshot region ke
+   clipboard, **Ctrl+Shift+Print** ke file (screenshot HANYA lewat `Print`
+   key family, bukan `Super+Shift+N` — lihat gotcha di `CLAUDE.md`).
 5. `fc-match "GohuFont:pixelsize=14"` balas `gohufont-14.pcf.gz` (bukan
    fallback DejaVu — kalau fallback, cek `CLAUDE.md` §4: fontconfig modern
    biasa menolak SEMUA font bitmap lewat `70-no-bitmaps-except-emoji.conf`,

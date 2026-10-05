@@ -374,7 +374,8 @@ Checklist verifikasi:
    `sleep 100` → **Ctrl+C** interrupt (SIGINT).
 4. Window: **Super+Space** buka fuzzel; **Super+Q** close; **Super+Left/Right**
    fokus; **Super+1..8** ganti workspace (bar menampilkan I..VIII);
-   **Super+Shift+4** screenshot region ke `~/Pictures`.
+   **Ctrl+Shift+Print** screenshot region ke `~/Pictures` (screenshot HANYA
+   lewat `Print` key family, bukan `Super+Shift+N`).
 5. `fc-match "GohuFont:pixelsize=14"` balas `gohufont-14.pcf.gz` (BUKAN
    fallback DejaVu — kalau fallback, lihat gotcha policy bitmap-font di §4);
    foot & fuzzel tampil bitmap tajam (bukan buram/di-scale) di 14px; sfwbar
@@ -473,8 +474,16 @@ Perbaikan: pindah SELURUH grup "pindah window ke workspace N" (N=1..8, bukan
 cuma 3/4 — biar modifier tetap konsisten lintas semua slot) ke
 **`CTRL+Super+N`**, bukan `Super+Shift+N`. Dipilih krn CTRL+Super sudah
 dipakai utk tema "pindah workspace" lain (`CTRL+Super+Left/Right` = kirim
-window ke workspace tetangga relatif) — satu modifier, satu tema. `Super+
-Shift+3/4` tetap murni screenshot, sesuai niat macOS-style aslinya.
+window ke workspace tetangga relatif) — satu modifier, satu tema.
+
+**Update lanjutan (keputusan user)**: alih-alih cuma memindah screenshot ke
+modifier lain, `Super+Shift+3/4` (dan turunannya `CTRL+Super+Shift+3/4` utk
+clipboard) **DIBUANG SELURUHNYA** dari screenshot — screenshot sekarang
+HANYA lewat `Print` key family (`Print`/`Shift+Print`/`Ctrl+Print`/
+`Ctrl+Shift+Print`, sudah ada & tetap jalan apa adanya). Alasan: slot digit
+3/4/5 dibebaskan total supaya kelas masalah yg sama (dua `hl.bind` pada
+kombinasi identik, salah satu diam-diam kalah) tak bisa kejadian lagi kalau
+ada fitur lain nanti yg "kebetulan" butuh `Super+Shift+<digit>`.
 
 Cara ketahuan kalau kejadian lagi di tempat lain: `hyprctl binds -j | jq
 '.[] | select(.key=="<digit>")'` (atau pola python serupa) — kalau CUMA ada

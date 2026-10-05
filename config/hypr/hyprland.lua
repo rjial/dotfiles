@@ -422,16 +422,17 @@ hl.bind("CTRL + ALT + right", hl.dsp.focus({ workspace = "r+1" }))
 hl.bind(mod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
 hl.bind(mod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
 
--- --- Screenshot (mac-style Cmd+Shift+3/4) ---
+-- --- Screenshot (Print key family saja — BUKAN Super+Shift+3/4/5) ---
+-- Keputusan user: Super+Shift+3/4 (mac-style) sengaja DIBUANG, supaya tak
+-- ada potensi tabrakan lagi dgn kombinasi workspace/app-shortcut lain di
+-- masa depan (lihat gotcha Super+Shift+3/4 vs pindah-workspace di atas —
+-- kelas masalah yg sama persis bisa kejadian lagi kalau slot 3/4/5 dipakai
+-- utk hal lain nanti). Print key family independen dari digit mana pun.
 local shot_file = "grim " .. home .. "/Pictures/shot-$(date +%s).png"
 local shot_area = 'grim -g "$(slurp)" ' .. home .. "/Pictures/shot-$(date +%s).png"
 local copy_file = "grim - | wl-copy -t image/png"
 local copy_area = 'grim -g "$(slurp)" - | wl-copy -t image/png'
 
-hl.bind(mod .. " + SHIFT + 3",          hl.dsp.exec_cmd(shot_file))
-hl.bind(mod .. " + SHIFT + 4",          hl.dsp.exec_cmd(shot_area))
-hl.bind("CTRL + " .. mod .. " + SHIFT + 3", hl.dsp.exec_cmd(copy_file))
-hl.bind("CTRL + " .. mod .. " + SHIFT + 4", hl.dsp.exec_cmd(copy_area))
 -- Tombol PrtSc: default clipboard; + Ctrl = ke file
 hl.bind("Print",               hl.dsp.exec_cmd(copy_file))
 hl.bind("SHIFT + Print",       hl.dsp.exec_cmd(copy_area))

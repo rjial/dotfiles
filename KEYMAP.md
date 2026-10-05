@@ -208,7 +208,7 @@ Semua di satu file `config/hypr/hyprland.lua`, **auto-reload saat disimpan**.
 | Shortcut | Aksi |
 |---|---|
 | `Super+1..8` | Pindah ke workspace 1–8 |
-| `Ctrl+Super+1..8` | Pindah window ke workspace 1–8 (BUKAN `Super+Shift+1..8` — `Shift+3/4` sudah dipakai screenshot, lihat gotcha di `CLAUDE.md`) |
+| `Ctrl+Super+1..8` | Pindah window ke workspace 1–8 (BUKAN `Super+Shift+1..8` — lihat gotcha historis di `CLAUDE.md`) |
 | `Ctrl+Super+Left` / `Ctrl+Super+Right` | Kirim window ke workspace tetangga |
 | `Ctrl+Alt+Left` / `Ctrl+Alt+Right` | Pindah workspace tanpa bawa window |
 | `Super+scroll` | Ganti workspace (skip yang kosong) |
@@ -230,8 +230,8 @@ Semua di satu file `config/hypr/hyprland.lua`, **auto-reload saat disimpan**.
 | `Super+klik tengah` | Toggle floating |
 | drag tepi window | Resize (`resize_on_border`, tanpa modifier) |
 
-Screenshot & media key Hyprland = **sama persis** dgn labwc (lihat atas):
-`Super+Shift+3/4`, `+Ctrl` ke clipboard, `Print` family, `XF86Audio*`,
+Screenshot & media key Hyprland: khusus **`Print` key family saja** (BUKAN
+`Super+Shift+3/4` — sengaja dibuang, lihat gotcha di `CLAUDE.md`), `XF86Audio*`,
 `XF86MonBrightness*` (semuanya lewat wrapper `volumectl`/`brightctl`, dgn OSD).
 
 ## Fitur Hyprland yang dipakai

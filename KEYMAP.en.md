@@ -213,7 +213,7 @@ changed. Everything lives in one file, `config/hypr/hyprland.lua`, which
 | Shortcut | Action |
 |---|---|
 | `Super+1..8` | Switch to workspace 1–8 |
-| `Ctrl+Super+1..8` | Move window to workspace 1–8 (NOT `Super+Shift+1..8` — `Shift+3/4` is already taken by screenshots, see the gotcha in `CLAUDE.md`) |
+| `Ctrl+Super+1..8` | Move window to workspace 1–8 (NOT `Super+Shift+1..8` — see the historical gotcha in `CLAUDE.md`) |
 | `Ctrl+Super+Left` / `Ctrl+Super+Right` | Send window to the neighbouring workspace |
 | `Ctrl+Alt+Left` / `Ctrl+Alt+Right` | Switch workspace without taking the window |
 | `Super+scroll` | Switch workspace (skips empty ones) |
@@ -235,8 +235,9 @@ changed. Everything lives in one file, `config/hypr/hyprland.lua`, which
 | `Super+middle-click` | Toggle floating |
 | drag a window edge | Resize (`resize_on_border`, no modifier) |
 
-Screenshots & media keys on Hyprland are **identical** to labwc (see above):
-`Super+Shift+3/4`, `+Ctrl` for clipboard, the `Print` family, `XF86Audio*` and
+Screenshots on Hyprland use the **`Print` key family only** (NOT
+`Super+Shift+3/4` — deliberately removed, see the gotcha in `CLAUDE.md`).
+Media keys: `XF86Audio*` and
 `XF86MonBrightness*` (all via the `volumectl`/`brightctl` wrappers, with OSD).
 
 ## Hyprland features in use
