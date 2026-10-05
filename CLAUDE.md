@@ -34,8 +34,8 @@ config/
   scripts/xdg-autostart      # jalankan entri .desktop autostart
   scripts/xdg-autostart.skip # entri yang TAK boleh jalan
   swaylock/config      # tema lock screen
-  foot/foot.ini        # terminal — font GohuFont:pixelsize=14
-  fuzzel/fuzzel.ini    # launcher — font GohuFont:pixelsize=14 (fcft, sama pola foot)
+  foot/foot.ini        # terminal — font GohuFont:pixelsize=11
+  fuzzel/fuzzel.ini    # launcher — font GohuFont:pixelsize=11 (fcft, sama pola foot)
   sfwbar/sfwbar.config # bar teks-only: taskbar + workspace romawi + status + power
   sfwbar/wsctl         # baca/ganti workspace aktif (Hyprland IPC saja)
   sfwbar/cmus-status   # modul now-playing cmus
@@ -231,11 +231,11 @@ sudo modprobe uinput
 # logout/reboot supaya keanggotaan grup `input` aktif
 ```
 
-### 4. Font GohuFont (bitmap, terminal + bar saja)
+### 4. Font GohuFont (bitmap, terminal + launcher + bar)
 
 ```bash
 sudo xbps-install gohufont
-fc-match "GohuFont:pixelsize=14"   # HARUS balas gohufont-14.pcf.gz, BUKAN
+fc-match "GohuFont:pixelsize=11"   # HARUS balas gohufont-11.pcf.gz, BUKAN
                                    # fallback DejaVu Sans — lihat gotcha di bawah
 ```
 
@@ -270,16 +270,17 @@ fc-match "GohuFont:pixelsize=14"   # HARUS balas gohufont-14.pcf.gz, BUKAN
 > </fontconfig>
 > EOF
 > sudo fc-cache -f
-> fc-match "GohuFont:pixelsize=14"   # harus balas gohufont-14.pcf.gz sekarang
+> fc-match "GohuFont:pixelsize=11"   # harus balas gohufont-11.pcf.gz sekarang
 > ```
 > File ini di luar `config/` repo (bukan `~/.config`, melainkan `/etc/fonts/`
 > sistem) — jadi TIDAK ikut `make link`, cukup sekali per mesin, sama seperti
 > session `.desktop` entry Hyprland di §6.
 
 GohuFont cuma punya strike bitmap diskrit 11px/14px (tak bisa di-scale ke
-ukuran lain tanpa buram) — `foot.ini` & `fuzzel.ini` dipatok ke **14px**
-(lebih terbaca di bar 24px daripada 11px). Cakupannya: terminal + launcher +
-bar. `mako/config`/`swaylock/config` SENGAJA tak diubah (tetap Inter).
+ukuran lain tanpa buram) — `foot.ini` & `fuzzel.ini` dipatok ke **11px**
+(pilihan user, lebih dekat ke nuansa rice lama/CRT drpd 14px). Cakupannya:
+terminal + launcher + bar. `mako/config`/`swaylock/config` SENGAJA tak
+diubah (tetap Inter).
 
 > **Gotcha nyata yang pernah kejadian (beda dari gotcha rejectfont di atas)**:
 > `sfwbar` (GTK3/Cairo) TIDAK BISA merender `GohuFont` mentah (PCF bitmap asli)
@@ -294,15 +295,16 @@ bar. `mako/config`/`swaylock/config` SENGAJA tak diubah (tetap Inter).
 >
 > `foot` dan `fuzzel` **TIDAK kena masalah ini** — keduanya link `libfcft.so.4`
 > (dicek via `ldd`), bukan GTK/Cairo, dan `fcft` memang dibangun dgn dukungan
-> bitmap-font kelas satu. Jadi keduanya tetap pakai `GohuFont:pixelsize=14`
+> bitmap-font kelas satu. Jadi keduanya tetap pakai `GohuFont:pixelsize=11`
 > polos di `foot.ini`/`fuzzel.ini`.
 >
-> Perbaikan utk sfwbar: pakai varian **`GohuFont 14 Nerd Font Mono`** —
+> Perbaikan utk sfwbar: pakai varian **`GohuFont 11 Nerd Font Mono`** —
 > TTF scalable hasil patch nerd-fonts dari bitmap yg sama persis (sudah
-> terpasang via paket NerdFonts, cek `fc-list | grep "GohuFont 14 Nerd Font
+> terpasang via paket NerdFonts, cek `fc-list | grep "GohuFont 11 Nerd Font
 > Mono"`), BUKAN keluarga "GohuFont" polos. Sudah diverifikasi lewat CSS
-> cascade GTK sungguhan (bukan cuma `Pango.FontDescription` manual): hasil
-> resolve = `GohuFont 14 Nerd Font Mono Medium 10.5` persis sesuai
+> cascade GTK sungguhan (bukan cuma `Pango.FontDescription` manual, dan
+> dgn ukuran 14px saat investigasi — pola resolusinya identik di 11px):
+> hasil resolve = `GohuFont 14 Nerd Font Mono Medium 10.5` persis sesuai
 > permintaan, tanpa fallback. `config/sfwbar/sfwbar.config` CSS-nya juga
 > dipecah jadi `font-family:`/`font-size:` terpisah (bukan shorthand `font:`)
 > saat investigasi ini — tak terbukti itu akar masalahnya, tapi dipertahankan
@@ -370,9 +372,10 @@ Checklist verifikasi:
 4. Window: **Super+Space** buka fuzzel; **Super+Q** close; **Super+Left/Right**
    fokus; **Super+1..8** ganti workspace (bar menampilkan I..VIII);
    **Super+Shift+4** screenshot region ke `~/Pictures`.
-5. `fc-match "GohuFont:pixelsize=14"` balas `gohufont-14.pcf.gz` (BUKAN
+5. `fc-match "GohuFont:pixelsize=11"` balas `gohufont-11.pcf.gz` (BUKAN
    fallback DejaVu — kalau fallback, lihat gotcha policy bitmap-font di §4);
-   foot & sfwbar tampil bitmap tajam (bukan buram/di-scale) di 14px.
+   foot & fuzzel tampil bitmap tajam (bukan buram/di-scale) di 11px; sfwbar
+   pakai varian TTF `GohuFont 11 Nerd Font Mono` (gotcha rendering di §4).
 6. `cmus`, putar lagu → modul bar berubah jadi "Artist - Title"; stop cmus →
    balik ke "[cmus off]"/"[cmus stopped]" tanpa crash sfwbar.
 7. Panel fastfetch (foot `--app-id fastfetch-panel`) muncul pinned di posisi
