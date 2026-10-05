@@ -34,8 +34,8 @@ config/
   scripts/xdg-autostart      # jalankan entri autostart .desktop
   scripts/xdg-autostart.skip # entri yang TAK boleh jalan
   swaylock/config      # tema lock screen
-  foot/foot.ini        # terminal — font GohuFont:pixelsize=11 (fcft)
-  fuzzel/fuzzel.ini    # launcher — font GohuFont:pixelsize=11 (fcft)
+  foot/foot.ini        # terminal — font GohuFont:pixelsize=14 (fcft)
+  fuzzel/fuzzel.ini    # launcher — font GohuFont:pixelsize=14 (fcft)
   sfwbar/sfwbar.config # bar teks-only (taskbar + workspace romawi + status + power)
                        #   font "GohuFont 11 Nerd Font Mono" (GTK/Cairo tak
                        #   bisa rasterisasi PCF mentah — lihat CLAUDE.md §4)
@@ -190,12 +190,12 @@ Checklist verifikasi:
    **Ctrl+C** interrupt (SIGINT).
 4. Window: **Super+Space** fuzzel; **Super+Q** close; **Super+1..8** ganti
    workspace (bar menampilkan I..VIII); **Super+Shift+4** screenshot region.
-5. `fc-match "GohuFont:pixelsize=11"` balas `gohufont-11.pcf.gz` (bukan
+5. `fc-match "GohuFont:pixelsize=14"` balas `gohufont-14.pcf.gz` (bukan
    fallback DejaVu — kalau fallback, cek `CLAUDE.md` §4: fontconfig modern
    biasa menolak SEMUA font bitmap lewat `70-no-bitmaps-except-emoji.conf`,
    perlu override tambahan utk mengizinkan `GohuFont` khusus). Teks di foot &
-   fuzzel tampil bitmap tajam di 11px, bukan buram — sfwbar pakai varian TTF
-   `GohuFont 11 Nerd Font Mono` (GTK/Cairo tak bisa rasterisasi PCF mentah,
+   fuzzel tampil bitmap tajam di 14px, bukan buram — sfwbar pakai varian TTF
+   `GohuFont 11 Nerd Font Mono` (11px, GTK/Cairo tak bisa rasterisasi PCF mentah,
    lihat gotcha di `CLAUDE.md` §4).
 6. cmus + lagu diputar → modul bar berubah jadi "Artist - Title".
 7. Panel fastfetch (foot `--app-id fastfetch-panel`) muncul pinned, gambar
