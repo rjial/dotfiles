@@ -1,6 +1,7 @@
 # macOS-style Hyprland dotfiles (Void Linux)
 
 ![Desktop preview](assets/preview.png)
+[Credit](https://www.pixiv.net/en/artworks/150495425)
 
 Hyprland config dgn shortcut ala macOS, di-port dari branch `master` (Fedora,
 tiga compositor) ke satu compositor saja untuk mesin **Void Linux** (runit +
