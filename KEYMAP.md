@@ -208,7 +208,7 @@ Semua di satu file `config/hypr/hyprland.lua`, **auto-reload saat disimpan**.
 | Shortcut | Aksi |
 |---|---|
 | `Super+1..8` | Pindah ke workspace 1–8 |
-| `Super+Shift+1..8` | Pindah window ke workspace 1–8 |
+| `Ctrl+Super+1..8` | Pindah window ke workspace 1–8 (BUKAN `Super+Shift+1..8` — `Shift+3/4` sudah dipakai screenshot, lihat gotcha di `CLAUDE.md`) |
 | `Ctrl+Super+Left` / `Ctrl+Super+Right` | Kirim window ke workspace tetangga |
 | `Ctrl+Alt+Left` / `Ctrl+Alt+Right` | Pindah workspace tanpa bawa window |
 | `Super+scroll` | Ganti workspace (skip yang kosong) |

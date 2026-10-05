@@ -452,3 +452,31 @@ Diagnosa: `grep -c 'Name="xremap' /proc/bus/input/devices` — kalau hasilnya
 Perbaikan: `kill <PID xremap sesi lama>` — device virtualnya ikut hilang
 otomatis begitu prosesnya mati, tak perlu langkah lain. Keybind pulih
 seketika setelah itu, tanpa restart Hyprland.
+
+## Gotcha nyata: Super+Shift+3/4 bentrok dgn "pindah window ke workspace 3/4"
+
+`hyprland.lua` sempat punya DUA bind berbeda pada kombinasi tombol yg SAMA
+PERSIS: loop workspace (`for i = 1, 8 do hl.bind(mod.." + SHIFT + "..i, ...
+window.move) end`) mendaftarkan `Super+Shift+3` dan `Super+Shift+4` utk
+"pindah window aktif ke workspace 3/4" — lalu BEBERAPA BARIS DI BAWAHNYA,
+blok screenshot mendaftarkan kombinasi tombol yg SAMA utk screenshot
+(`Super+Shift+3` = screenshot full, `+4` = screenshot area, meniru macOS).
+
+Di Lua config Hyprland, bind kedua pada kombinasi tombol yg identik
+**MENGGANTIKAN** yg pertama — bukan error, bukan warning, `hyprctl binds`
+cuma menunjukkan satu entri (yg terakhir didaftarkan) utk kombinasi itu.
+Konsekuensi: `Super+Shift+3/4` HANYA mengambil screenshot; "pindah window ke
+workspace 3/4" via kombinasi itu tak pernah benar-benar terdaftar — diam-diam
+hilang, baru ketahuan saat user coba pakainya scr langsung.
+
+Perbaikan: pindah SELURUH grup "pindah window ke workspace N" (N=1..8, bukan
+cuma 3/4 — biar modifier tetap konsisten lintas semua slot) ke
+**`CTRL+Super+N`**, bukan `Super+Shift+N`. Dipilih krn CTRL+Super sudah
+dipakai utk tema "pindah workspace" lain (`CTRL+Super+Left/Right` = kirim
+window ke workspace tetangga relatif) — satu modifier, satu tema. `Super+
+Shift+3/4` tetap murni screenshot, sesuai niat macOS-style aslinya.
+
+Cara ketahuan kalau kejadian lagi di tempat lain: `hyprctl binds -j | jq
+'.[] | select(.key=="<digit>")'` (atau pola python serupa) — kalau CUMA ada
+SATU entri utk kombinasi yg kamu kira didaftarkan dua kali, salah satunya
+kalah. Bandingkan urutan baris `hl.bind(...)` di file: yg terakhir menang.

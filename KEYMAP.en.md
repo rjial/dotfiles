@@ -213,7 +213,7 @@ changed. Everything lives in one file, `config/hypr/hyprland.lua`, which
 | Shortcut | Action |
 |---|---|
 | `Super+1..8` | Switch to workspace 1–8 |
-| `Super+Shift+1..8` | Move window to workspace 1–8 |
+| `Ctrl+Super+1..8` | Move window to workspace 1–8 (NOT `Super+Shift+1..8` — `Shift+3/4` is already taken by screenshots, see the gotcha in `CLAUDE.md`) |
 | `Ctrl+Super+Left` / `Ctrl+Super+Right` | Send window to the neighbouring workspace |
 | `Ctrl+Alt+Left` / `Ctrl+Alt+Right` | Switch workspace without taking the window |
 | `Super+scroll` | Switch workspace (skips empty ones) |

@@ -399,9 +399,17 @@ hl.bind(mod .. " + SHIFT + bracketright", hl.dsp.workspace.move({ monitor = "+1"
 
 -- --- Workspaces (8 desktop = mac Spaces) ---
 -- 9 sengaja tak dipakai — sisakan kalau butuh slot khusus.
+--
+-- Pindah window ke workspace N pakai CTRL+Super (BUKAN Super+Shift) — Super+
+-- Shift+3/4 sudah dipakai screenshot (baris di bawah). Di Lua, bind kedua pada
+-- kombinasi tombol yg SAMA PERSIS menggantikan yg pertama (bukan error/warning),
+-- jadi tabrakan ini tak kelihatan sampai diuji manual: Super+Shift+3/4 cuma
+-- mengambil screenshot, window TAK pindah ke workspace 3/4 sama sekali.
+-- CTRL+Super dipilih karena sudah dipakai utk "pindah workspace relatif"
+-- (CTRL+Super+left/right di bawah) — satu modifier utk satu tema "pindah".
 for i = 1, 8 do
-    hl.bind(mod .. " + " .. i,             hl.dsp.focus({ workspace = i }))
-    hl.bind(mod .. " + SHIFT + " .. i,     hl.dsp.window.move({ workspace = i }))
+    hl.bind(mod .. " + " .. i,                  hl.dsp.focus({ workspace = i }))
+    hl.bind("CTRL + " .. mod .. " + " .. i,     hl.dsp.window.move({ workspace = i }))
 end
 
 -- Pindah window ke workspace sebelah
