@@ -25,6 +25,25 @@ local menu  = "fuzzel"
 local home  = os.getenv("HOME")
 local script = home .. "/.config/scripts/"
 
+---------------------------------------------------------------- exec bridge
+-- Jembatan dispatcher `exec` untuk pemanggil eksternal (sfwbar). WAJIB GLOBAL
+-- (bukan local) sebab dievaluasi oleh handler dispatch, bukan oleh file ini.
+--
+-- KENAPA ADA: `hyprctl dispatch exec <cmd>` diteruskan Hyprland sebagai ekspresi
+-- Lua tunggal — `return hl.dispatch(exec <cmd>)`. Dengan config .conf lama itu
+-- perintah shell polos; dengan config Lua stream token campuran ini GAGAL PARSE
+-- (`')' expected near '<cmd>'`) sehingga perintahnya tidak jalan sama sekali.
+-- Gejala: klik tombol bar (sfwbar action `Exec "…"`) tidak melakukan apa pun,
+-- sementara `wsctl set N` dari terminal tetap bekerja.
+--
+-- KARENA ITU argumen Exec di sfwbar.config dibungkus string literal Lua:
+--   Exec "[[sh -c '…']]"
+-- agar menjadi `exec [[sh -c '…']]` — panggilan fungsi ini dgn satu argumen
+-- string — lalu hasilnya (descriptor dispatcher) dieksekusi hl.dispatch().
+exec = function(cmd)
+    return hl.dsp.exec_cmd(cmd)
+end
+
 ---------------------------------------------------------------- monitor
 -- output = "" -> catch-all, berlaku untuk output apa pun (eDP-1, HDMI-A-1, ...).
 -- Multi-monitor / skala khusus: JANGAN edit sini — tulis di
