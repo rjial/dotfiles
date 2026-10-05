@@ -34,9 +34,11 @@ config/
   scripts/xdg-autostart      # jalankan entri autostart .desktop
   scripts/xdg-autostart.skip # entri yang TAK boleh jalan
   swaylock/config      # tema lock screen
-  foot/foot.ini        # terminal — font GohuFont:pixelsize=14
-  fuzzel/fuzzel.ini    # launcher
+  foot/foot.ini        # terminal — font GohuFont:pixelsize=14 (fcft)
+  fuzzel/fuzzel.ini    # launcher — font GohuFont:pixelsize=14 (fcft)
   sfwbar/sfwbar.config # bar teks-only (taskbar + workspace romawi + status + power)
+                       #   font "GohuFont 14 Nerd Font Mono" (GTK/Cairo tak
+                       #   bisa rasterisasi PCF mentah — lihat CLAUDE.md §4)
   sfwbar/wsctl         # baca/ganti workspace aktif (Hyprland IPC)
   sfwbar/cmus-status   # modul now-playing cmus utk bar
   fastfetch/config.jsonc     # panel info sistem + foto

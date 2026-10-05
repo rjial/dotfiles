@@ -35,7 +35,7 @@ config/
   scripts/xdg-autostart.skip # entri yang TAK boleh jalan
   swaylock/config      # tema lock screen
   foot/foot.ini        # terminal — font GohuFont:pixelsize=14
-  fuzzel/fuzzel.ini    # launcher — font tetap JetBrains Mono (tak diubah)
+  fuzzel/fuzzel.ini    # launcher — font GohuFont:pixelsize=14 (fcft, sama pola foot)
   sfwbar/sfwbar.config # bar teks-only: taskbar + workspace romawi + status + power
   sfwbar/wsctl         # baca/ganti workspace aktif (Hyprland IPC saja)
   sfwbar/cmus-status   # modul now-playing cmus
@@ -277,10 +277,43 @@ fc-match "GohuFont:pixelsize=14"   # HARUS balas gohufont-14.pcf.gz, BUKAN
 > session `.desktop` entry Hyprland di §6.
 
 GohuFont cuma punya strike bitmap diskrit 11px/14px (tak bisa di-scale ke
-ukuran lain tanpa buram) — `foot.ini` & CSS sfwbar sudah dipatok ke **14px**
-(lebih terbaca di bar 24px daripada 11px). `fuzzel.ini`/`mako/config`/
-`swaylock/config` SENGAJA tak diubah (tetap JetBrains Mono/Inter) — cakupan
-GohuFont hanya terminal + bar sesuai permintaan user.
+ukuran lain tanpa buram) — `foot.ini` & `fuzzel.ini` dipatok ke **14px**
+(lebih terbaca di bar 24px daripada 11px). Cakupannya: terminal + launcher +
+bar. `mako/config`/`swaylock/config` SENGAJA tak diubah (tetap Inter).
+
+> **Gotcha nyata yang pernah kejadian (beda dari gotcha rejectfont di atas)**:
+> `sfwbar` (GTK3/Cairo) TIDAK BISA merender `GohuFont` mentah (PCF bitmap asli)
+> SAMA SEKALI — diverifikasi langsung lewat harness PyGObject berdiri sendiri
+> (bukan dugaan): `fontconfig` SUKSES menemukan filenya (`fc-match` balas
+> benar), tapi `PangoLayout`/Cairo tetap diam-diam jatuh ke font lain
+> (DejaVu Sans atau SF Pro Text lewat rantai fallback) — **apa pun satuan
+> ukuran yg dipakai** (pt, px, atau `:pixelsize=` eksplisit pada
+> `Pango.FontDescription`). Ini soal jalur RENDERING (rasterisasi PCF legacy
+> via Cairo), bukan soal SELEKSI font (`rejectfont` policy) — dua masalah
+> berbeda yg kebetulan menimpa font yg sama.
+>
+> `foot` dan `fuzzel` **TIDAK kena masalah ini** — keduanya link `libfcft.so.4`
+> (dicek via `ldd`), bukan GTK/Cairo, dan `fcft` memang dibangun dgn dukungan
+> bitmap-font kelas satu. Jadi keduanya tetap pakai `GohuFont:pixelsize=14`
+> polos di `foot.ini`/`fuzzel.ini`.
+>
+> Perbaikan utk sfwbar: pakai varian **`GohuFont 14 Nerd Font Mono`** —
+> TTF scalable hasil patch nerd-fonts dari bitmap yg sama persis (sudah
+> terpasang via paket NerdFonts, cek `fc-list | grep "GohuFont 14 Nerd Font
+> Mono"`), BUKAN keluarga "GohuFont" polos. Sudah diverifikasi lewat CSS
+> cascade GTK sungguhan (bukan cuma `Pango.FontDescription` manual): hasil
+> resolve = `GohuFont 14 Nerd Font Mono Medium 10.5` persis sesuai
+> permintaan, tanpa fallback. `config/sfwbar/sfwbar.config` CSS-nya juga
+> dipecah jadi `font-family:`/`font-size:` terpisah (bukan shorthand `font:`)
+> saat investigasi ini — tak terbukti itu akar masalahnya, tapi dipertahankan
+> krn longhand lebih robust lintas versi GTK3 CSS engine.
+>
+> Cara verifikasi serupa di masa depan (tanpa perlu akses visual): tulis
+> script PyGObject kecil yg bikin `Gtk.CssProvider`, apply CSS yg sama persis
+> dgn file config, lalu baca `PangoLayout.get_iter().get_run().item.analysis
+> .font.describe()` — itu font yg BENAR-BENAR dipakai utk rasterisasi,
+> beda dgn `label.get_pango_context().get_font_description()` yg cuma
+> menunjukkan apa yg DIMINTA (bisa beda kalau terjadi fallback diam-diam).
 
 ### 5. Salin config ke ~/.config/
 
