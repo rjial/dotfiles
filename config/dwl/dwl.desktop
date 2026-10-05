@@ -1,5 +1,0 @@
-[Desktop Entry]
-Name=dwl
-Comment=dwm for Wayland (macOS-style, autostart)
-Exec=dwl -s ~/.config/dwl/autostart.sh
-Type=Application

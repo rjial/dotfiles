@@ -17,7 +17,7 @@
 
 # --- Stack KDE yang lupa memasang OnlyShowIn=KDE -----------------------------
 # Keempat entri ini tak punya OnlyShowIn sama sekali, jadi tanpa daftar ini
-# mereka ikut nyala di labwc/dwl/Hyprland walau tak ada Plasma.
+# mereka ikut nyala di Hyprland walau tak ada Plasma.
 org.kde.kalendarac
 org.kde.kdeconnect.daemon
 org.kde.kunifiedpush-distributor

@@ -9,7 +9,6 @@
 #   <slot> = nama grup anti-tumpuk. OSD dgn slot sama saling MENIMPA, jadi
 #   menekan tombol cepat berulang menghasilkan satu toast yang isinya berganti,
 #   bukan tumpukan toast. Slot berbeda = OSD berbeda:
-#       tag         (dipakai osd-dwl-tag)
 #       volume      (dipakai volumectl)
 #       brightness  (dipakai brightctl)
 #
@@ -17,8 +16,8 @@
 #   menggambar progress bar di dalam toast (mako(5): "Progress can be indicated
 #   in a notification by setting a hint, \"value\" to an integer between 0 and
 #   100 inclusive"). Warnanya dari `progress-color` blok [category=osd]. Tanpa
-#   argumen ini toast tampil tanpa bar — dipakai OSD tag dan state on/off
-#   (mute, mic) yang tak punya nilai kontinu.
+#   argumen ini toast tampil tanpa bar — dipakai state on/off (mute, mic) yang
+#   tak punya nilai kontinu.
 #
 # KENAPA PAKAI HINT, BUKAN `notify-send -r`:
 # `-r <id>` TIDAK bekerja di mako. mako menetapkan id notifikasi sendiri secara

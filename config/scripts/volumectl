@@ -4,9 +4,8 @@
 # usage: volumectl up|down|mute|mic-mute [step]
 #        step = persen, default 5.
 #
-# Dipanggil dari keybind XF86Audio* di ketiga compositor (labwc/rc.xml,
-# hypr/hyprland.conf, dwl/config.h) sebagai pengganti pemanggilan `wpctl`
-# langsung — supaya perubahan volume punya umpan balik visual.
+# Dipanggil dari keybind XF86Audio* di hyprland.lua sebagai pengganti
+# pemanggilan `wpctl` langsung — supaya perubahan volume punya umpan balik visual.
 #
 # KENAPA `-l 1.0`:
 # `wpctl set-volume` TIDAK punya batas atas sendiri; tanpa limit, spam tombol

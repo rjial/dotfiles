@@ -1,0 +1,40 @@
+// fastfetch — panel info sistem + foto, pengganti neofetch+foto di rice lama.
+// Ditampilkan lewat config/scripts/fastfetch-panel di window foot pinned
+// (lihat hyprland.lua rule "fastfetch-panel").
+//
+// logo.source TIDAK diisi file di repo ini — itu foto pribadi milik user,
+// bukan aset yang boleh di-commit tanpa diminta. Isi path absolut ke foto
+// sendiri sebelum dipakai (atau override di sini saat deploy).
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "type": "sixel",
+        "source": "~/Pictures/fastfetch-logo.png",
+        "width": 16,
+        "height": 16,
+        "padding": { "top": 1, "right": 2 }
+    },
+    "display": {
+        "separator": " : ",
+        "color": {
+            "keys": "#81c8be",
+            "title": "#c6d0f5"
+        }
+    },
+    "modules": [
+        "title",
+        "separator",
+        "os",
+        "kernel",
+        "uptime",
+        "packages",
+        "shell",
+        "wm",
+        "terminal",
+        "cpu",
+        "memory",
+        "disk",
+        "break",
+        "colors"
+    ]
+}

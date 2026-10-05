@@ -1,4 +1,4 @@
-# swaylock — lock screen (labwc / dwl / Hyprland).
+# swaylock — lock screen (Hyprland).
 # Dipanggil dari config/scripts/powermenu: `swaylock -f` (Lock, dan sebelum Suspend).
 #
 # Tema: Catppuccin Frappé (accent teal) — sama dgn mako/fuzzel/foot/sfwbar.

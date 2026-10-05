@@ -1,0 +1,10 @@
+#!/bin/sh
+# fastfetch-panel — panel info sistem + foto, pinned (pengganti neofetch+foto
+# di rice lama). Dipanggil dari autostart hyprland.lua.
+#
+# `exec $SHELL` (bukan `$SHELL` polos) WAJIB: tanpa itu window menutup begitu
+# fastfetch selesai, atau menumpuk proses shell kalau dipanggil ulang — exec
+# mengganti proses saat ini, bukan menambah anak baru. Hasilnya: window tetap
+# jadi shell interaktif hidup setelah fastfetch tampil, persis gambar rice
+# lama (prompt `>` di bawah info).
+exec foot --app-id fastfetch-panel -e sh -c 'fastfetch; exec "${SHELL:-/bin/sh}"'

@@ -7,7 +7,7 @@
 # Nama file sengaja BUKAN `brightnessctl` supaya tak menutupi binary
 # /usr/bin/brightnessctl kalau ~/.config/scripts pernah masuk PATH.
 #
-# Dipanggil dari keybind XF86MonBrightness{Up,Down} di ketiga compositor.
+# Dipanggil dari keybind XF86MonBrightness{Up,Down} di hyprland.lua.
 #
 # KENAPA `-n1` (min-value):
 # `brightnessctl set 5%-` boleh sampai 0 = layar mati total dan user tak bisa

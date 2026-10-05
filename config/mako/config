@@ -1,8 +1,8 @@
-# mako — notification daemon (labwc / dwl / Hyprland).
+# mako — notification daemon (Hyprland).
 # Toast pojok kanan-atas ala macOS. Reload tanpa restart: makoctl reload
 #
 # Tema: Catppuccin Frappé (accent teal) — sama dgn fuzzel/foot/sfwbar.
-# border-radius 8 = sinkron `rounding` Hyprland dan `cornerRadius` labwc.
+# border-radius 8 = sinkron `rounding` Hyprland.
 
 # --- Penempatan -------------------------------------------------------------
 # layer=overlay: toast tetap terlihat di atas window fullscreen.
@@ -60,8 +60,8 @@ border-color=#e78284ff
 default-timeout=0
 
 # --- OSD --------------------------------------------------------------------
-# Dipakai config/scripts/osd. Pengirimnya: OSD tag dwl (config/dwl/autostart.sh,
-# dwl saja) plus volumectl & brightctl (ketiga WM, dari keybind XF86*).
+# Dipakai config/scripts/osd. Pengirimnya: volumectl & brightctl (dari keybind
+# XF86* di hyprland.lua).
 #
 # Bedanya dgn toast biasa: muncul di BAWAH-TENGAH (bukan pojok), kecil, cepat
 # hilang, dan tidak masuk history — ini indikator sesaat, bukan notifikasi.

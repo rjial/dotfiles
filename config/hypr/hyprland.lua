@@ -2,9 +2,9 @@
 --
 -- KENAPA Lua: format `.conf` (hyprlang) dibuang di Hyprland 0.57. 0.56 sudah
 -- menampilkan dialog "You are using the .conf config format, support for which
--- will be removed in Hyprland 0.57." tiap start sesi. `hyprland.conf` masih
--- disimpan di repo sebagai rujukan, tapi Hyprland MENGABAIKANNYA total begitu
--- file .lua ini ada: log memberi `[cfg] Using lua config found at …`.
+-- will be removed in Hyprland 0.57." tiap start sesi. Hyprland MENGABAIKAN
+-- `.conf` total begitu file .lua ini ada: log memberi
+-- `[cfg] Using lua config found at …`.
 --
 -- KENDALA xremap (WAJIB DIBACA sebelum menambah keybind):
 -- xremap me-remap Super+<huruf> berikut menjadi Ctrl+ untuk shortcut GUI app:
@@ -36,16 +36,15 @@ hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 -- persistent cuma workspace 1 yg eksis dan gesture tampak mati.
 -- Tanpa field `monitor` = ikut monitor mana pun, jadi portabel antar mesin.
 --
--- default_name = glyph nerd-font md-numeric_N_circle U+F0CA0 + 2*(N-1),
--- HARUS sama dgn labwc/rc.xml <desktops><names> dan sfwbar.config label pager.
--- Kalau beda, pager sfwbar render dua set tombol (glyph phantom + "1".."8").
-local ws_glyphs = { "󰲠", "󰲢", "󰲤", "󰲦", "󰲨", "󰲪", "󰲬", "󰲮" }
-for i, glyph in ipairs(ws_glyphs) do
-    hl.workspace_rule({ workspace = tostring(i), persistent = true, default_name = glyph })
+-- default_name = angka romawi (ala rice lama: bar teks-only, bukan ikon), HARUS
+-- sama dgn sfwbar.config label pager. Kalau beda, pager sfwbar render dua set
+-- tombol (romawi phantom + "1".."8").
+local ws_names = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII" }
+for i, name in ipairs(ws_names) do
+    hl.workspace_rule({ workspace = tostring(i), persistent = true, default_name = name })
 end
 
 ---------------------------------------------------------------- env
--- Mirror config/labwc/environment
 hl.env("XCURSOR_THEME", "Adwaita")
 hl.env("XCURSOR_SIZE", "24")
 hl.env("QT_QPA_PLATFORM", "wayland")
@@ -59,15 +58,15 @@ hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 hl.env("_JAVA_AWT_WM_NONREPARENTING", "1")
 
 ---------------------------------------------------------------- autostart
--- Mirror config/labwc/autostart — stack dibagi dgn labwc/dwl.
---
 -- Guard HYPR_TEST: instance Hyprland bersarang (dipakai untuk menguji config ini
 -- tanpa mempertaruhkan sesi asli) TIDAK boleh menyalakan daemon kedua kalinya —
 -- xremap kedua berebut grab input, sfwbar/mako kedua menumpuk. Uji dgn
 -- `HYPR_TEST=1 Hyprland -c <file>`.
 if os.getenv("HYPR_TEST") ~= "1" then
     hl.on("hyprland.start", function()
-        hl.exec_cmd("lxpolkit")                          -- polkit agent (udisks mount)
+        -- Polkit agent. Verifikasi path binary di mesin Void — path ini lokasi
+        -- paling umum lintas distro untuk paket polkit-gnome, bukan jaminan.
+        hl.exec_cmd("/usr/libexec/polkit-gnome-authentication-agent-1")
         hl.exec_cmd("xremap " .. home .. "/.config/xremap/config.yml")
         -- path absolut: ~/.local/bin belum tentu ada di PATH sesi display manager
         hl.exec_cmd(home .. "/.local/bin/waypaper --restore")
@@ -76,20 +75,20 @@ if os.getenv("HYPR_TEST") ~= "1" then
         hl.exec_cmd("snappy-wrapper")                    -- daemon Alt+Tab overlay;
                                                          -- wrapper menunggu socket
                                                          -- Hyprland siap dulu
+        hl.exec_cmd(script .. "fastfetch-panel")         -- panel fastfetch+foto pinned
         -- Entri XDG .desktop (nm-applet, blueman, spice-vdagent, slack).
-        -- Dijalankan PALING AKHIR supaya 5 daemon di atas hidup lebih dulu.
+        -- Dijalankan PALING AKHIR supaya daemon di atas hidup lebih dulu.
         hl.exec_cmd(script .. "xdg-autostart")
     end)
 end
 
 ---------------------------------------------------------------- appearance
--- Catppuccin Frappé — sinkron dgn labwc themerc + fuzzel + sfwbar.
+-- Catppuccin Frappé — sinkron dgn fuzzel + sfwbar.
 hl.config({
     general = {
-        gaps_in     = 3,                                 -- labwc <gap>6</gap> antar window
+        gaps_in     = 3,
         gaps_out    = 6,
         border_size = 2,
-        -- Border satu warna, persis labwc themerc (window.active/inactive.border.color)
         col = {
             active_border   = "rgba(626880ff)",          -- surface2
             inactive_border = "rgba(414559ff)",          -- surface0
@@ -100,7 +99,7 @@ hl.config({
     },
 
     decoration = {
-        rounding         = 0,                            -- sudut tajam (labwc cornerRadius 0)
+        rounding         = 0,                            -- sudut tajam
         active_opacity   = 1.0,
         inactive_opacity = 1.0,
         shadow = {
@@ -156,7 +155,7 @@ hl.config({
 
     input = {
         kb_layout    = "us",
-        follow_mouse = 0,                                -- click-to-focus (mac), sama labwc
+        follow_mouse = 0,                                -- click-to-focus (mac-like)
         float_switch_override_focus = 0,
         touchpad = {
             natural_scroll       = true,                 -- mac natural scroll
@@ -195,7 +194,13 @@ hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 ---------------------------------------------------------------- rules
 -- Tiap rule butuh `name` unik: itu pegangan untuk mematikannya saat runtime
 -- (`rule:set_enabled(false)`) dan yang muncul saat rule bentrok.
-hl.window_rule({ name = "float-lxpolkit", match = { class = "^(lxpolkit)$" }, float = true })
+-- Class GTK polkit-gnome-authentication-agent-1 belum diverifikasi persis di
+-- mesin Void — cek `hyprctl clients` saat dialog polkit muncul, ganti kalau beda.
+hl.window_rule({
+    name  = "float-polkit-gnome",
+    match = { class = "^([Pp]olkit-gnome-authentication-agent-1)$" },
+    float = true,
+})
 hl.window_rule({
     name  = "float-system-dialogs",
     match = { class = "^(pavucontrol|nm-connection-editor|blueman-manager)$" },
@@ -205,6 +210,19 @@ hl.window_rule({
     name  = "float-file-dialogs",
     match = { title = "^(Open File|Save File|Save As)$" },
     float = true,
+})
+
+-- Panel fastfetch+foto (pengganti neofetch+foto di rice lama) — selalu pinned
+-- di pojok kiri-bawah. Default 1920x1080; override resolusi lain di local.lua
+-- (rule belakangan menang, sama pola dgn PiP).
+hl.window_rule({
+    name             = "fastfetch-panel",
+    match            = { class = "^(fastfetch-panel)$" },
+    float            = true,
+    pin              = true,
+    size             = "480 300",
+    move             = "40 760",
+    no_initial_focus = true,
 })
 
 -- --- Picture-in-Picture ---
@@ -303,7 +321,7 @@ hl.layer_rule({
 })
 
 ---------------------------------------------------------------- keybind
--- --- Launcher / terminal (mirror labwc) ---
+-- --- Launcher / terminal ---
 hl.bind(mod .. " + space", hl.dsp.exec_cmd(menu))
 hl.bind("ALT + space",     hl.dsp.exec_cmd(menu))
 hl.bind(mod .. " + Return", hl.dsp.exec_cmd(term))
@@ -311,7 +329,7 @@ hl.bind(mod .. " + Return", hl.dsp.exec_cmd(term))
 -- --- Window management ---
 hl.bind(mod .. " + Q",         hl.dsp.window.close())
 hl.bind(mod .. " + SHIFT + Q", hl.dsp.exit())
--- mode "maximized" hormati bar (labwc ToggleMaximize); "fullscreen" = sejati.
+-- mode "maximized" hormati bar; "fullscreen" = sejati.
 hl.bind(mod .. " + up",         hl.dsp.window.fullscreen({ mode = "maximized" }))
 hl.bind(mod .. " + SHIFT + up", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
 hl.bind(mod .. " + down",  hl.dsp.window.float({ action = "toggle" }))
@@ -336,7 +354,6 @@ hl.bind(mod .. " + grave", function()
 end)
 
 -- Pengganti minimize (Hyprland tak punya iconify) — special workspace.
--- labwc: Super+M / Super+H = Iconify.
 hl.bind(mod .. " + M", hl.dsp.window.move({ workspace = "special:minimized", silent = true }))
 hl.bind(mod .. " + H", hl.dsp.window.move({ workspace = "special:minimized", silent = true }))
 hl.bind(mod .. " + SHIFT + M", hl.dsp.workspace.toggle_special("minimized"))
@@ -364,8 +381,8 @@ hl.bind("CTRL + " .. mod .. " + SHIFT + N", hl.dsp.exec_cmd("makoctl dismiss --a
 hl.bind("CTRL + " .. mod .. " + D",         hl.dsp.exec_cmd("makoctl mode -t do-not-disturb"))
 hl.bind("CTRL + " .. mod .. " + SHIFT + D", hl.dsp.exec_cmd("makoctl restore"))
 
--- Power menu (fuzzel) — sama di labwc (rc.xml C-W-q) dan dwl (config.h).
--- Ctrl+Super karena Super+Q polos = close window. Log Out di dalam menu memakai
+-- Power menu (fuzzel). Ctrl+Super karena Super+Q polos = close window.
+-- Log Out di dalam menu memakai
 -- `loginctl terminate-session`, jadi lebih benar daripada Super+Shift+Q (exit)
 -- yang cuma membunuh compositor tanpa menutup sesi logind.
 hl.bind("CTRL + " .. mod .. " + Q", hl.dsp.exec_cmd(script .. "powermenu"))
@@ -376,14 +393,14 @@ hl.bind(mod .. " + bracketright",         hl.dsp.focus({ monitor = "+1" }))
 hl.bind(mod .. " + SHIFT + bracketleft",  hl.dsp.workspace.move({ monitor = "-1" }))
 hl.bind(mod .. " + SHIFT + bracketright", hl.dsp.workspace.move({ monitor = "+1" }))
 
--- --- Workspaces (8 desktop = mac Spaces; labwc/rc.xml sama) ---
+-- --- Workspaces (8 desktop = mac Spaces) ---
 -- 9 sengaja tak dipakai — sisakan kalau butuh slot khusus.
 for i = 1, 8 do
     hl.bind(mod .. " + " .. i,             hl.dsp.focus({ workspace = i }))
     hl.bind(mod .. " + SHIFT + " .. i,     hl.dsp.window.move({ workspace = i }))
 end
 
--- labwc SendToDesktop left/right
+-- Pindah window ke workspace sebelah
 hl.bind("CTRL + " .. mod .. " + left",  hl.dsp.window.move({ workspace = "r-1" }))
 hl.bind("CTRL + " .. mod .. " + right", hl.dsp.window.move({ workspace = "r+1" }))
 -- Pindah workspace tanpa membawa window
@@ -393,7 +410,7 @@ hl.bind("CTRL + ALT + right", hl.dsp.focus({ workspace = "r+1" }))
 hl.bind(mod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
 hl.bind(mod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
 
--- --- Screenshot (mirror labwc, mac-style Cmd+Shift+3/4) ---
+-- --- Screenshot (mac-style Cmd+Shift+3/4) ---
 local shot_file = "grim " .. home .. "/Pictures/shot-$(date +%s).png"
 local shot_area = 'grim -g "$(slurp)" ' .. home .. "/Pictures/shot-$(date +%s).png"
 local copy_file = "grim - | wl-copy -t image/png"
@@ -425,7 +442,7 @@ hl.bind("XF86AudioMicMute",      hl.dsp.exec_cmd(script .. "volumectl mic-mute")
 hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd(script .. "brightctl up"),       el)
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(script .. "brightctl down"),     el)
 
--- --- Mouse (mirror dwl buttons[]) ---
+-- --- Mouse ---
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })  -- pindah
 hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })  -- resize
 hl.bind(mod .. " + mouse:274", hl.dsp.window.float({ action = "toggle" }))

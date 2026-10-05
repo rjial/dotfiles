@@ -1,22 +1,19 @@
 #!/bin/sh
-# powermenu — menu power lintas compositor (labwc / dwl / Hyprland).
+# powermenu — menu power untuk Hyprland (Void Linux).
 #
 # Frontend = `fuzzel --dmenu`, jadi tema Catppuccin Frappé ikut
 # config/fuzzel/fuzzel.ini otomatis — nol CSS/paket tambahan.
 #
 # Dipanggil dari:
-#   labwc     rc.xml   keybind C-W-q  + menu.xml submenu Power
-#   Hyprland  hyprland.conf  CTRL $mod Q
-#   dwl       config.h  MODKEY|CTRL + q   (butuh recompile)
+#   Hyprland  hyprland.lua  CTRL $mod Q
 #   sfwbar    label 󰐥
 #
 # CATATAN DESAIN
-# - Log Out pakai `loginctl terminate-session`, BUKAN aksi exit per-WM. labwc
-#   tak punya CLI exit dan dwl tak punya IPC sama sekali, jadi logind adalah
-#   satu-satunya jalur yang seragam di tiga compositor. Ia juga menutup sesi
-#   dengan benar, bukan cuma membunuh compositor seperti `$mod SHIFT Q`.
+# - Log Out pakai `loginctl terminate-session`, BUKAN `$mod SHIFT Q` (exit
+#   Hyprland) — itu cuma membunuh compositor, bukan menutup sesi logind.
+#   Di Void ini butuh elogind aktif (lihat CLAUDE.md) supaya `loginctl` valid.
 # - poweroff/reboot/suspend TIDAK butuh sudo: logind mengizinkannya untuk sesi
-#   aktif lewat polkit, dan lxpolkit sudah di-autostart di ketiga WM.
+#   aktif lewat polkit, dan polkit-gnome sudah di-autostart di hyprland.lua.
 # - Glyph di bawah sudah diverifikasi ada di `Symbols Nerd Font` (fontconfig
 #   fallback dari font fuzzel). Jangan tukar sembarang glyph tanpa cek
 #   `fc-match ":charset=<codepoint>"` — banyak codepoint nf-md tidak terpasang.

@@ -5,16 +5,15 @@
 #        -n  dry run: cetak apa yang akan jalan + alasan skip, tak meluncurkan
 #        -k  bunuh proses hasil run sebelumnya, lalu keluar
 #
-# Dipanggil paling akhir dari blok autostart ketiga compositor (labwc/autostart,
-# dwl/autostart.sh, hypr/hyprland.conf) — supaya 5 daemon repo (xremap, sfwbar,
-# mako, waypaper, lxpolkit) sudah jalan duluan.
+# Dipanggil paling akhir dari blok autostart hyprland.lua — supaya daemon repo
+# (xremap, sfwbar, mako, waypaper, polkit-gnome) sudah jalan duluan.
 #
 # KENAPA SCRIPT SENDIRI:
-# labwc/dwl/Hyprland tak satu pun memproses .desktop autostart, jadi nm-applet,
-# blueman, spice-vdagent, dan slack tak pernah hidup. `dex` (peluncur XDG yang
-# biasa dipakai) TIDAK ADA di repo Fedora, dan systemd
-# `xdg-desktop-autostart.target` punya `RefuseManualStart=yes` sehingga butuh
-# unit sesi sendiri + import-environment. Parser 100 baris ini lebih murah.
+# Hyprland tak memproses .desktop autostart, jadi nm-applet, blueman,
+# spice-vdagent, dan slack tak pernah hidup. `dex` (peluncur XDG yang biasa
+# dipakai) TIDAK ADA di repo Void, dan systemd `xdg-desktop-autostart.target`
+# tak relevan sama sekali di Void (runit, bukan systemd). Parser 100 baris ini
+# lebih murah dan distro-agnostic.
 #
 # KENAPA ADA SKIP-LIST:
 # 19 entri di mesin ini lolos filter OnlyShowIn dan binernya semua terpasang —
@@ -43,9 +42,8 @@ done
 
 # --- Bunuh proses sisa run sebelumnya ----------------------------------------
 # Sesi kedua tanpa reboot akan meluncurkan nm-applet/blueman kedua kalau tak
-# dibersihkan — masalah yang sama dengan blok pkill di dwl/autostart.sh:21-23.
-# PID diverifikasi lewat /proc supaya PID yang sudah didaur-ulang kernel untuk
-# proses lain tidak ikut kena.
+# dibersihkan. PID diverifikasi lewat /proc supaya PID yang sudah didaur-ulang
+# kernel untuk proses lain tidak ikut kena.
 kill_previous() {
 	[ -f "$PIDFILE" ] || return 0
 	while read -r pid _rest; do
@@ -185,8 +183,8 @@ for dir in $DIRS; do
 			continue
 		fi
 
-		# JANGAN setsid/nohup: itu persis yang membuat helper nyangkut setelah
-		# logout (lihat catatan di dwl/autostart.sh). Proses biasa saja + pidfile.
+		# JANGAN setsid/nohup: itu persis yang membuat helper nyangkut lintas
+		# sesi setelah logout. Proses biasa saja + pidfile.
 		#
 		# `exec` WAJIB: tanpa itu /bin/sh tetap hidup sebagai induk dan `$!`
 		# mencatat PID shell, bukan PID program. Membunuh shell tak membunuh
