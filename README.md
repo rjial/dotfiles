@@ -1,5 +1,7 @@
 # macOS-style Hyprland dotfiles (Void Linux)
 
+![Desktop preview](assets/preview.png)
+
 Hyprland config dgn shortcut ala macOS, di-port dari branch `master` (Fedora,
 tiga compositor) ke satu compositor saja untuk mesin **Void Linux** (runit +
 elogind). Nuansa visual: bar teks-only ala polybar, font bitmap **GohuFont**
