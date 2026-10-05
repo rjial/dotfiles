@@ -67,7 +67,11 @@ if os.getenv("HYPR_TEST") ~= "1" then
         -- Polkit agent. Verifikasi path binary di mesin Void — path ini lokasi
         -- paling umum lintas distro untuk paket polkit-gnome, bukan jaminan.
         hl.exec_cmd("/usr/libexec/polkit-gnome-authentication-agent-1")
-        hl.exec_cmd("xremap " .. home .. "/.config/xremap/config.yml")
+        -- "xremap-hypr", BUKAN "xremap" polos: mesin ini juga punya sesi GNOME
+        -- dgn xremap-gnome-bin terpasang, keduanya /usr/bin/xremap akan bentrok
+        -- jadi varian build Hyprland diinstal dgn nama binary beda (lihat
+        -- ~/void-packages/srcpkgs/xremap-hypr-bin/template).
+        hl.exec_cmd("xremap-hypr " .. home .. "/.config/xremap/config.yml")
         -- path absolut: ~/.local/bin belum tentu ada di PATH sesi display manager
         hl.exec_cmd(home .. "/.local/bin/waypaper --restore")
         hl.exec_cmd("sfwbar")                            -- menu-bar ala macOS

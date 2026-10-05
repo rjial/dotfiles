@@ -55,6 +55,15 @@ Menambah **dir baru** di `config/` WAJIB ditambah ke `DIRS` juga.
 # sudah terverifikasi ADA di repo resmi Void (xbps-query -Rs <nama>):
 sudo xbps-install foot fuzzel mako swaylock grim slurp wl-clipboard swaybg \
   cmus fastfetch polkit-gnome gohufont
+```
+
+> **GohuFont butuh satu langkah tambahan**, bukan cuma `xbps-install` — lihat
+> `CLAUDE.md` §4. Fontconfig modern (termasuk di mesin ini) default MENOLAK
+> semua font bitmap lewat `/etc/fonts/conf.d/70-no-bitmaps-except-emoji.conf`;
+> tanpa override tambahan, `fc-match "GohuFont"` diam-diam jatuh ke DejaVu Sans
+> walau paketnya sudah terpasang dgn benar.
+
+```bash
 
 # elogind + dbus biasanya sudah aktif secara default di instalasi desktop Void
 # (runit service di /var/service/{dbus,elogind}) — cek dulu:
@@ -80,14 +89,37 @@ cat hyprland-void/common/shlibs >> void-packages/common/shlibs
 cp -r --remove-destination hyprland-void/srcpkgs/* void-packages/srcpkgs/
 
 cd void-packages
+# remote "origin" di sini = fork sendiri (hasil clone di atas). Tambah remote
+# "upstream" kalau belum ada, lalu WAJIB sync dgn upstream SEBELUM build —
+# fork bisa ketinggalan versi (mis. mesa) dibanding apa yg sudah live di repo
+# binary resmi, dan xbps-src lalu memutuskan BUILD DARI SOURCE (mesa+llvm+rust,
+# puluhan menit) padahal binary resminya sudah ada. Commit dulu template yg
+# baru ditempel, baru pull upstream.
+git remote add upstream https://github.com/void-linux/void-packages 2>/dev/null
+git add srcpkgs common/shlibs && git commit -m "Add hyprland-void templates"
+git fetch upstream && git pull --rebase upstream master
+
+# `xbps-src pkg` cuma terima SATU nama paket per panggilan — dua baris
+# terpisah, bukan `pkg hyprland xdg-desktop-portal-hyprland` sekaligus
+# (argumen kedua diam-diam diabaikan, tanpa pesan error apa pun).
 ./xbps-src pkg hyprland                      # build Hyprland + seluruh dependensinya
+./xbps-src pkg xdg-desktop-portal-hyprland
 sudo xbps-install --repository=hostdir/binpkgs hyprland xdg-desktop-portal-hyprland
 
-# opsional tapi disarankan: simpan template ke fork sendiri (commit dulu,
-# baru pull --rebase — jangan rebase working tree yang masih kotor)
-git add srcpkgs common/shlibs && git commit -m "Add hyprland-void templates"
-git pull --rebase && git push
+# simpan template ke fork sendiri (commit sudah di atas, tinggal push)
+git push origin master
 ```
+
+> **Gotcha nyata yang pernah kejadian**: `cat hyprland-void/common/shlibs >>
+> void-packages/common/shlibs` bisa membawa baris STALE kalau template-nya
+> baru saja naik versi minor tapi `common/shlibs` upstream-nya belum
+> di-update (persis terjadi pada `hyprutils`: template bilang `0.14.1`, tapi
+> `common/shlibs` mereka masih `0.14.0`). xbps-src `99-pkglint` lalu menolak
+> build dgn `SONAME bump detected` — bukan krn ada yg salah, tapi krn baris
+> LAMA utk `hyprutils` (dari template resmi yg sudah ditimpa) masih nyangkut
+> di file dan bikin cocok ganda. Perbaikannya: pastikan tiap `pkgname` cuma
+> 1 baris di `common/shlibs` yg relevan dgn versi template SAAT INI — hapus
+> baris lama kalau ada (`grep <pkgname> common/shlibs` dulu utk cek).
 
 > Cek dulu [`sofijacom/hyprland-void`](https://github.com/sofijacom/hyprland-void)
 > masih jadi fork paling aktif sebelum dipakai — proyek komunitas begini bisa
@@ -95,16 +127,25 @@ git pull --rebase && git push
 > ketiga (`/etc/xbps.d/hyprland-void.conf`) sebagai jalur lebih cepat, TAPI itu
 > bukan default di sini — build dari source sendiri lebih bisa diaudit.
 
-`sfwbar`, `snappy-switcher`, `xremap`, `waypaper` juga tak ada di repo resmi
-Void DAN tak ada template komunitas siap pakai — ditulis manual di
+`xremap` sendiri tak perlu di-build dari source — upstream menyediakan binary
+rilis per-backend compositor. Varian Hyprland (`xremap-hypr-bin`, SUDAH ditulis
+& dibangun) dipasang sbg `/usr/bin/xremap-hypr` (bukan `/usr/bin/xremap` polos)
+supaya tak bentrok dgn `xremap-gnome-bin` yang sudah terpasang untuk sesi
+GNOME — lihat `CLAUDE.md` §2b.
+
+`sfwbar`, `snappy-switcher`, `waypaper` masih tak ada di repo resmi Void
+maupun template komunitas — ditulis manual di
 `~/void-packages/srcpkgs/<nama>/template` (lihat `CLAUDE.md` §"Paket custom
 lewat `~/void-packages`" untuk `build_style` masing-masing).
 
 ## 2. uinput permission (xremap inject event tanpa root)
 
+Sudah terkonfigurasi di mesin ini (`xremap-gnome-bin` sudah berjalan untuk
+sesi GNOME membuktikannya — lihat `CLAUDE.md` §3). Kalau mesin lain belum:
+
 ```bash
 sudo usermod -aG input $USER
-echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' \
+echo 'KERNEL=="uinput", GROUP="input", TAG+="uaccess"' \
   | sudo tee /etc/udev/rules.d/99-uinput.rules
 echo uinput | sudo tee /etc/modules-load.d/uinput.conf
 sudo modprobe uinput
@@ -131,18 +172,11 @@ kalau sudah ada isinya, putuskan backup atau merge.
 
 ## 4. Jalankan & verifikasi
 
-Void tak punya SDDM/GDM session entry bawaan untuk Hyprland hasil build
-sendiri — buat manual kalau belum ada:
-
-```bash
-sudo tee /usr/share/wayland-sessions/hyprland.desktop <<'EOF'
-[Desktop Entry]
-Name=Hyprland
-Comment=Hyprland dynamic tiling Wayland compositor
-Exec=Hyprland
-Type=Application
-EOF
-```
+Session entry `/usr/share/wayland-sessions/hyprland.desktop` **sudah ikut
+terpasang** dari paket `hyprland` (template `sofijacom/hyprland-void`) — tak
+perlu dibuat manual. Isinya `Exec=/usr/bin/start-hyprland`, watchdog resmi
+upstream Hyprland (bukan exec `Hyprland` polos) yg bisa restart compositor
+kalau crash — biarkan apa adanya.
 
 Log out → pilih **Hyprland** di layar login, atau dari TTY: `Hyprland`.
 Hyprland **reload otomatis saat file disimpan**; paksa dgn `hyprctl reload`.
@@ -154,8 +188,11 @@ Checklist verifikasi:
    **Ctrl+C** interrupt (SIGINT).
 4. Window: **Super+Space** fuzzel; **Super+Q** close; **Super+1..8** ganti
    workspace (bar menampilkan I..VIII); **Super+Shift+4** screenshot region.
-5. `fc-list | grep -i gohu` menemukan "GohuFont"; teks di foot & sfwbar tampil
-   bitmap tajam di 14px, bukan buram.
+5. `fc-match "GohuFont:pixelsize=14"` balas `gohufont-14.pcf.gz` (bukan
+   fallback DejaVu — kalau fallback, cek `CLAUDE.md` §4: fontconfig modern
+   biasa menolak SEMUA font bitmap lewat `70-no-bitmaps-except-emoji.conf`,
+   perlu override tambahan utk mengizinkan `GohuFont` khusus). Teks di foot &
+   sfwbar tampil bitmap tajam di 14px, bukan buram.
 6. cmus + lagu diputar → modul bar berubah jadi "Artist - Title".
 7. Panel fastfetch (foot `--app-id fastfetch-panel`) muncul pinned, gambar
    tampil via sixel, dan jadi shell interaktif setelah fastfetch selesai.

@@ -103,7 +103,8 @@ saling-bergantung) — pakai template komunitas yang aktif dipelihara:
 ```bash
 mkdir -p ~/repos && cd ~/repos
 # fork pribadi user, BUKAN void-linux/void-packages upstream langsung — supaya
-# template yang ditempel bisa di-commit+push ke fork sendiri, bukan cuma lokal
+# template yang ditempel bisa di-commit+push ke fork sendiri, bukan cuma lokal.
+# Remote "origin" dari clone ini = fork sendiri.
 git clone https://github.com/rjial/void-packages
 cd void-packages && ./xbps-src binary-bootstrap && cd ..
 
@@ -112,18 +113,40 @@ cat hyprland-void/common/shlibs >> void-packages/common/shlibs
 cp -r --remove-destination hyprland-void/srcpkgs/* void-packages/srcpkgs/
 
 cd void-packages
-./xbps-src pkg hyprland
-sudo xbps-install --repository=hostdir/binpkgs hyprland xdg-desktop-portal-hyprland
-
-# opsional tapi disarankan: simpan template yang baru ditempel ke fork sendiri.
-# Commit dulu SEBELUM pull --rebase — rebase di atas working tree yang masih
-# kotor berisiko (autostash bisa gagal/konflik); commit dulu baru rebase aman.
+# Commit DULU, baru sync dgn upstream (bukan push dulu) — supaya tak kehilangan
+# template yang baru ditempel kalau upstream punya versi lebih baru utk paket
+# yang sama (mis. mesa). WAJIB dilakukan SEBELUM build: fork yang basi bikin
+# xbps-src salah sangka suatu dependensi (mis. libgbm-devel dari mesa) tak
+# tersedia sbg binary dan malah membangunnya dari source (mesa+llvm+rust,
+# puluhan menit sia-sia) padahal binary resminya sudah ada.
 git add srcpkgs common/shlibs
 git commit -m "Add hyprland-void templates"
-git pull --rebase   # bukan merge — fork bisa sudah berubah di remote sejak
-                    # clone, rebase menjaga histori tetap linear
-git push
+git remote add upstream https://github.com/void-linux/void-packages 2>/dev/null
+git fetch upstream && git pull --rebase upstream master
+
+# `xbps-src pkg` cuma terima SATU nama paket per panggilan — dua baris
+# terpisah, BUKAN `pkg hyprland xdg-desktop-portal-hyprland` sekaligus (argumen
+# kedua diam-diam diabaikan, tanpa pesan error apa pun — ini yg kejadian saat
+# eksekusi pertama kali, xdg-desktop-portal-hyprland diam-diam tak terbangun).
+./xbps-src pkg hyprland
+./xbps-src pkg xdg-desktop-portal-hyprland
+sudo xbps-install --repository=hostdir/binpkgs hyprland xdg-desktop-portal-hyprland
+
+# simpan template ke fork sendiri (commit sudah di atas, tinggal push)
+git push origin master
 ```
+
+> **Gotcha nyata yang pernah kejadian**: `cat hyprland-void/common/shlibs >>
+> void-packages/common/shlibs` bisa membawa baris STALE kalau template
+> komunitas baru naik versi minor tapi `common/shlibs`-nya belum di-update
+> (persis terjadi pada `hyprutils`: template bilang `0.14.1`, shlibs mereka
+> masih bilang `0.14.0`). xbps-src `99-pkglint` lalu menolak build dgn "SONAME
+> bump detected" — bukan krn ada yg salah, tapi krn baris LAMA utk `hyprutils`
+> (dari template resmi void-packages yg sudah ditimpa `cp --remove-destination`)
+> masih nyangkut di `common/shlibs` dan bikin cocok ganda utk pkgname yg sama.
+> Perbaikan: `grep <pkgname> common/shlibs` dulu sebelum build — kalau ada
+> >1 baris utk pkgname yg sama dgn revision version berbeda, hapus yg basi,
+> sisakan yg sesuai versi template saat ini.
 
 Templatenya sudah masuk `~/void-packages/srcpkgs/` lewat langkah `cp` di atas
 (bukan ditinggal di clone terpisah). **Sebelum dipakai, cek ulang**
@@ -140,10 +163,35 @@ binary pre-built pihak ketiga (`/etc/xbps.d/hyprland-void.conf` →
 `repository=https://raw.githubusercontent.com/sofijacom/hyprland-void/repository-x86_64-glibc`).
 Build dari source sendiri lebih bisa diaudit — dicatat sbg opsi, bukan default.
 
-#### 2b. sfwbar, snappy-switcher, xremap, waypaper (tulis template sendiri)
+#### 2b. xremap — SUDAH DIBUAT (`xremap-hypr-bin`)
 
-Tak ada template komunitas siap pakai untuk keempat ini (sudah dicek via
-pencarian web) — tulis manual di `srcpkgs/<nama>/template`. Alur umum:
+Mesin ini sudah punya `xremap-gnome-bin` terpasang (paket custom lain di fork
+`~/void-packages`, untuk sesi GNOME) yang memasang binary rilis prebuilt
+upstream ke `/usr/bin/xremap`. **Jangan pakai `build_style=cargo`** — upstream
+xremap sudah menyediakan binary rilis per-backend compositor
+(`xremap-linux-x86_64-{gnome,hypr,wlroots,kde,niri,...}.zip` di GitHub
+Releases), jauh lebih simpel daripada build dari source. Untuk Hyprland,
+varian yang benar adalah **`-hypr`** (backend khusus Hyprland, bukan
+`-wlroots` generik — ada sejak v0.15.x).
+
+Template `srcpkgs/xremap-hypr-bin/template` sudah ditulis (meniru persis pola
+`xremap-gnome-bin`), SATU bedanya: `do_install()` memasang binary sbg
+**`/usr/bin/xremap-hypr`** (`vbin xremap xremap-hypr`), bukan `/usr/bin/xremap`
+polos — kalau nama file sama, `xbps-install` menolak (`xremap-gnome-bin` sudah
+memiliki path itu). Konsekuensi: `config/hypr/hyprland.lua` memanggil
+`xremap-hypr`, bukan `xremap`. Sudah di-build & diverifikasi (`xbps-query
+--repository=hostdir/binpkgs -f xremap-hypr-bin` → `/usr/bin/xremap-hypr` +
+lisensi, tanpa bentrok file). Tinggal `sudo xbps-install --repository=hostdir/
+binpkgs xremap-hypr-bin`.
+
+Checksum release di-pin ke v0.15.13 — kalau upstream rilis versi baru, update
+`version=`/checksum di template (unduh ulang zip + `sha256sum`), jangan ditebak.
+
+#### 2c. sfwbar, snappy-switcher, waypaper — SUDAH DIBUAT & diverifikasi
+
+Tak ada template komunitas siap pakai untuk ketiga ini (sudah dicek via
+pencarian web) — ditulis manual di `srcpkgs/<nama>/template`, sudah dibangun &
+diinstal. Alur umum (per paket baru serupa di masa depan):
 
 ```bash
 cd ~/void-packages
@@ -153,34 +201,80 @@ $EDITOR srcpkgs/<nama>/template
 sudo xbps-install --repository=hostdir/binpkgs <nama>
 ```
 
-Per paket (deps PERSIS wajib diverifikasi dari source upstream masing-masing
-saat ditulis — jangan ditebak dari daftar ini):
-
-| Paket | `build_style` | Catatan |
+| Paket | `build_style` | Catatan (semua terverifikasi lewat build sungguhan) |
 |---|---|---|
-| **sfwbar** | `meson` | hostmakedepends/makedepends (gtk+3-devel, json-glib-devel, dll) dari `meson.build` upstream sfwbar. |
-| **snappy-switcher** | `gnu-makefile` atau `do_build`/`do_install` manual | upstream pakai `make`/`make install` biasa, bukan meson — cek `Makefile` upstream (`github.com/OpalAayan/snappy-switcher`) untuk target+flag yang benar. |
-| **xremap** | `cargo` | pakai cargo feature `--features wlroots` di template — WAJIB, tanpa itu deteksi per-app (blok `foot`) tak jalan. |
-| **waypaper** | `python3-pep517` | tak ada di repo resmi maupun PyPI index resmi Void, tapi ADA di PyPI (versi 2.9 saat dicek) — template menarik sdist dari sana. |
+| **sfwbar** (`1.0.beta17_1`) | `meson` | Tag upstream `v1.0_beta17` — underscore DITOLAK xbps-src di `version=` ("version contains invalid character: _"); `version=1.0.beta17` (titik) + `wrksrc="sfwbar-1.0_beta17"` manual krn nama direktori tarball ikut tag asli. `configure_args="-Dmpd=disabled -Dbsdctl=disabled -Dbluez=disabled -Diwd=disabled"` (modul yg tak dipakai config/sfwbar/sfwbar.config repo ini). Modul yg AKTIF: alsactl, pulsectl, network(nm), dbus, idle, idleinhibit, pipewire, xkb, appmenu, ncenter — semua butuh devel lib yg sudah dideklarasi `makedepends`. |
+| **snappy-switcher** (`4.5.0_1`) | manual (`do_build`/`do_install`) | Tak ada tag rilis upstream — dipin ke commit (`_commit=`), distfiles pakai tarball GitHub `archive/<sha>.tar.gz`. Tak ada file LICENSE di repo walau README mengklaim GPL-3.0 (tak ada yg di-`vlicense`). **Makefile upstream TIDAK menghormati `$DESTDIR` sama sekali** — semua path instal pakai `$(PREFIX)` literal, dan `SYSCONFDIR` malah hardcode absolut `/etc/xdg/snappy-switcher` tanpa `$(PREFIX)`. `do_install()` override KEDUANYA: `make PREFIX="${DESTDIR}/usr" SYSCONFDIR="${DESTDIR}/etc/xdg/snappy-switcher" install`. **Konsekuensi penting**: tema ikut `$(PREFIX)/share/...` jadi terpasang di `/usr/share/snappy-switcher/themes/` — BUKAN `/usr/local/share/snappy-switcher/themes/` seperti catatan `sudo make install` manual ala Fedora (lihat README §"Overlay Alt+Tab"), karena PREFIX di-set ke `/usr` di sini, bukan default upstream `/usr/local`. |
+| **waypaper** (`2.9_1`) | `python3-pep517` | Tak ada di repo resmi Void, ADA di PyPI. 2 dependensi Python-nya (`imageio-ffmpeg`, `screeninfo`) JUGA tak ada di repo resmi → dipaketkan terpisah (`python3-imageio-ffmpeg`, `python3-screeninfo`, masing-masing `python3-pep517` juga — `screeninfo` pakai `poetry-core` sbg build backend, bukan setuptools, jadi `hostmakedepends="python3-poetry-core ..."`). Semua distfiles pakai `${PYPI_SITE}/<huruf-pertama>/<nama>/<nama>-${version}.tar.gz` (var `PYPI_SITE` sudah didefinisikan xbps-src di `common/environment/setup/misc.sh`, pola URL lawas PyPI yg masih resolve lewat redirect). |
 
 ### 3. uinput permission (xremap inject event tanpa root)
 
+**SUDAH terkonfigurasi di mesin ini** — terverifikasi lewat `xremap-gnome-bin`
+yang sudah berjalan nyata untuk sesi GNOME (`pgrep -a xremap` menunjukkan PID
+aktif membaca `~/.config/gnome-macos-remap/config.yml`), jadi tak ada langkah
+baru yang perlu dijalankan:
+- `$USER` sudah anggota grup `input` (`groups $USER`).
+- Rule udev sudah ada di `/etc/udev/rules.d/input.rules` (nama file beda dari
+  dugaan awal, isinya pun pakai pendekatan lebih modern:
+  `KERNEL=="uinput", GROUP="input", TAG+="uaccess"` — `uaccess` memberi akses
+  ke sesi aktif via elogind/seatd, bukan static mode/group statis).
+- `/dev/uinput` sudah ada dgn `crw-rw----+` (grup `input`).
+
+Kalau langkah ini perlu diulang di mesin Void lain yang BELUM punya
+`xremap-gnome-bin`/rule serupa, baru jalankan:
 ```bash
 sudo usermod -aG input $USER
-echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' \
+echo 'KERNEL=="uinput", GROUP="input", TAG+="uaccess"' \
   | sudo tee /etc/udev/rules.d/99-uinput.rules
 echo uinput | sudo tee /etc/modules-load.d/uinput.conf
 sudo modprobe uinput
+# logout/reboot supaya keanggotaan grup `input` aktif
 ```
-> Keanggotaan grup `input` baru aktif setelah **logout/reboot**. Ingatkan user.
 
 ### 4. Font GohuFont (bitmap, terminal + bar saja)
 
 ```bash
 sudo xbps-install gohufont
-fc-list | grep -i gohu   # pastikan nama family persis "GohuFont" sebelum
-                         # dipercaya oleh foot.ini / CSS sfwbar
+fc-match "GohuFont:pixelsize=14"   # HARUS balas gohufont-14.pcf.gz, BUKAN
+                                   # fallback DejaVu Sans — lihat gotcha di bawah
 ```
+
+> **Gotcha nyata yang pernah kejadian**: `fc-list | grep gohu` tetap KOSONG
+> walau paket terpasang, berkas `.pcf.gz` ada, dan `fc-cache -f` (bahkan
+> `sudo fc-cache -f`) dilaporkan sukses meng-cache 8 font dari
+> `/usr/share/fonts/misc`. Penyebabnya BUKAN cache — sistem Void ini (dan
+> kemungkinan besar instalasi fontconfig modern pada umumnya) memasang
+> `/etc/fonts/conf.d/70-no-bitmaps-except-emoji.conf` (symlink ke
+> `/usr/share/fontconfig/conf.avail/...`) yang MENOLAK semua font
+> `outline=false` DAN `scalable=false` — persis properti PCF bitmap biasa.
+> `fc-scan` langsung ke file tetap berhasil baca `family: "GohuFont"` (policy
+> ini beroperasi di tahap seleksi/listing, bukan di parsing file), jadi
+> `fc-scan` yg "berhasil" BUKAN bukti font akan ketemu lewat nama family.
+>
+> Perbaikan: file override baru bernama LEBIH BESAR dari `70` (supaya
+> diproses belakangan, "acceptfont" menang) yg eksplisit mengizinkan family
+> `GohuFont`:
+> ```bash
+> sudo tee /etc/fonts/conf.d/71-allow-gohufont.conf <<'EOF'
+> <?xml version="1.0"?>
+> <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+> <fontconfig>
+>   <description>Re-allow the GohuFont bitmap family rejected by 70-no-bitmaps-except-emoji.conf</description>
+>   <selectfont>
+>     <acceptfont>
+>       <pattern>
+>         <patelt name="family"><string>GohuFont</string></patelt>
+>       </pattern>
+>     </acceptfont>
+>   </selectfont>
+> </fontconfig>
+> EOF
+> sudo fc-cache -f
+> fc-match "GohuFont:pixelsize=14"   # harus balas gohufont-14.pcf.gz sekarang
+> ```
+> File ini di luar `config/` repo (bukan `~/.config`, melainkan `/etc/fonts/`
+> sistem) — jadi TIDAK ikut `make link`, cukup sekali per mesin, sama seperti
+> session `.desktop` entry Hyprland di §6.
 
 GohuFont cuma punya strike bitmap diskrit 11px/14px (tak bisa di-scale ke
 ukuran lain tanpa buram) — `foot.ini` & CSS sfwbar sudah dipatok ke **14px**
@@ -198,17 +292,18 @@ make link
 Jangan timpa config existing tanpa konfirmasi — cek `ls ~/.config/hypr` dulu;
 kalau sudah ada isinya, tanyakan ke user apakah mau di-backup atau di-merge.
 
-### 6. Session entry (Void tak punya paket Hyprland resmi = tak ada `.desktop` bawaan)
+### 6. Session entry — SUDAH otomatis, tak perlu dibuat manual
 
-```bash
-sudo tee /usr/share/wayland-sessions/hyprland.desktop <<'EOF'
-[Desktop Entry]
-Name=Hyprland
-Comment=Hyprland dynamic tiling Wayland compositor
-Exec=Hyprland
-Type=Application
-EOF
-```
+Paket `hyprland` dari template `sofijacom/hyprland-void` SUDAH menyertakan
+`/usr/share/wayland-sessions/hyprland.desktop` sendiri (terverifikasi langsung
+setelah install — dugaan awal rencana ini, "Void tak punya paket resmi = tak
+ada .desktop bawaan", SALAH untuk template komunitas ini, koreksi dicatat di
+sini). Entry itu memanggil `Exec=/usr/bin/start-hyprland` — **bukan**
+`Exec=Hyprland` polos seperti yg sempat direncanakan di sini; `start-hyprland`
+adalah tool resmi upstream Hyprland sendiri ("A binary to properly start
+Hyprland via a watchdog process", dari `strings /usr/bin/start-hyprland`) yg
+mengawasi & bisa me-restart compositor kalau crash — lebih baik drpd exec
+langsung, JANGAN ditimpa dgn entry manual.
 
 ### 7. Jalankan & verifikasi
 
@@ -221,6 +316,19 @@ EOF
   config/hypr/hyprland.lua` (nested instance, autostart di-skip lewat guard
   `HYPR_TEST` di `hyprland.lua`).
 
+> **Gotcha nyata yang pernah kejadian**: nested test di ATAS sesi GNOME/Mutter
+> (bukan di atas compositor wlroots lain) CRASH dgn
+> `wl_seat (15): expected at most 8, got 9` lalu `CBackend::create() failed!`
+> — Mutter versi terbaru expose protokol `wl_seat` v9, sedangkan backend
+> aquamarine Hyprland 0.56.2 cuma terima maks v8. Ini BUKAN error config: log
+> menunjukkan `[cfg] Config is lua, loading lua mgr` sukses duluan, crash
+> baru terjadi jauh SETELAH config selesai di-parse, di tahap pembuatan
+> backend grafis. Konsekuensi: nested test di mesin ini (sesi aktifnya GNOME)
+> tak bisa dipakai utk validasi runtime penuh — cuma membuktikan Lua-nya
+> ter-load tanpa syntax error. Validasi runtime sungguhan (keybind, rule
+> window, dll) WAJIB logout dari GNOME lalu pilih sesi Hyprland dari layar
+> login, bukan via nested test dari dalam sesi ini.
+
 Checklist verifikasi:
 1. `pgrep xremap sfwbar mako snappy-wrapper` → semua jalan.
 2. GUI copy: fokus field teks di browser → **Super+C / Super+V**.
@@ -229,8 +337,9 @@ Checklist verifikasi:
 4. Window: **Super+Space** buka fuzzel; **Super+Q** close; **Super+Left/Right**
    fokus; **Super+1..8** ganti workspace (bar menampilkan I..VIII);
    **Super+Shift+4** screenshot region ke `~/Pictures`.
-5. `fc-list | grep -i gohu` menemukan family GohuFont; foot & sfwbar tampil
-   bitmap tajam (bukan buram/di-scale) di 14px.
+5. `fc-match "GohuFont:pixelsize=14"` balas `gohufont-14.pcf.gz` (BUKAN
+   fallback DejaVu — kalau fallback, lihat gotcha policy bitmap-font di §4);
+   foot & sfwbar tampil bitmap tajam (bukan buram/di-scale) di 14px.
 6. `cmus`, putar lagu → modul bar berubah jadi "Artist - Title"; stop cmus →
    balik ke "[cmus off]"/"[cmus stopped]" tanpa crash sfwbar.
 7. Panel fastfetch (foot `--app-id fastfetch-panel`) muncul pinned di posisi
