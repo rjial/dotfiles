@@ -303,6 +303,35 @@ The foot-specific block wins over the global one, keeping real `Ctrl+C` = SIGINT
 
 > Raw `Ctrl+C` is untouched in foot → still sends SIGINT (interrupt).
 
+## Shell (zsh) — macOS-like jump & selection
+
+Applies to the zsh command line (ZLE widgets in `config/zsh/.zshrc`). Because
+`Super+arrow` is taken by Hyprland for window focus/move, the **Cmd+arrow**
+role is emulated with **Ctrl+arrow**; **Option = Alt** as-is.
+
+| macOS | Key in zsh | Function |
+|---|---|---|
+| `Option+Left/Right` | `Alt+Left/Right` | Jump by word |
+| `Cmd+Left/Right` | `Ctrl+Left/Right` | Start/end of line |
+| `Cmd+Up/Down` | `Ctrl+Up/Down` | Start/end of buffer |
+| `Shift+Left/Right` | `Shift+Left/Right` | Select by character |
+| `Shift+Option+Left/Right` | `Shift+Alt+Left/Right` | Select by word |
+| `Shift+Cmd+Left/Right` | `Shift+Ctrl+Left/Right` | Select to start/end of line |
+| `Shift+Cmd+Up/Down` | `Shift+Ctrl+Up/Down` | Select to start/end of buffer |
+
+GUI-editor-style selection behavior (region highlight):
+
+- **Typing** replaces the selection; **Backspace/Delete** removes it.
+- Any other widget (plain arrows, Enter, etc.) cancels the selection.
+- `Shift+Home`/`Shift+End` = select to start/end of line (same as
+  `Shift+Ctrl+Left/Right`).
+
+Implementation: `zle-sel-*` functions + `zle-edit-*` wrappers in
+`config/zsh/.zshrc`. Widgets MUST be registered with `zle -N` before being
+referenced by `bindkey` — otherwise the keys raise `No such widget` (a real
+gotcha that happened here). Keys use xterm-style modifier numbering
+(2=Shift 3=Alt 4=Shift+Alt 5=Ctrl 6=Ctrl+Shift), exactly what foot sends.
+
 ## Notifications (mako)
 
 Same on all three compositors. Uses `Ctrl+Super` because bare `Super+N`/`Super+D`

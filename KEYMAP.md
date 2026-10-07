@@ -296,6 +296,35 @@ Blok khusus foot menang atas global. Bikin `Ctrl+C` asli tetap = SIGINT.
 
 > `Ctrl+C` mentah tidak disentuh di foot → tetap kirim SIGINT (interrupt).
 
+## Shell (zsh) — jump & seleksi ala macOS
+
+Berlaku di baris perintah zsh (widget ZLE di `config/zsh/.zshrc`). Karena
+`Super+panah` di Hyprland dipakai fokus/pindah window, peran **Cmd+panah**
+diemulasikan dengan **Ctrl+panah**; **Option = Alt** apa adanya.
+
+| macOS | Tombol di zsh | Fungsi |
+|---|---|---|
+| `Option+Left/Right` | `Alt+Left/Right` | Lompat kata |
+| `Cmd+Left/Right` | `Ctrl+Left/Right` | Ke awal/akhir baris |
+| `Cmd+Up/Down` | `Ctrl+Up/Down` | Ke awal/akhir buffer |
+| `Shift+Left/Right` | `Shift+Left/Right` | Seleksi per karakter |
+| `Shift+Option+Left/Right` | `Shift+Alt+Left/Right` | Seleksi per kata |
+| `Shift+Cmd+Left/Right` | `Shift+Ctrl+Left/Right` | Seleksi ke awal/akhir baris |
+| `Shift+Cmd+Up/Down` | `Shift+Ctrl+Up/Down` | Seleksi ke awal/akhir buffer |
+
+Perilaku seleksi ala editor GUI (highlight region):
+
+- **Mengetik** mengganti seleksi; **Backspace/Delete** menghapusnya.
+- Widget lain (panah polos, Enter, dsb) membatalkan seleksi.
+- `Shift+Home`/`Shift+End` = seleksi ke awal/akhir baris (sama dengan
+  `Shift+Ctrl+Left/Right`).
+
+Implementasi: fungsi `zle-sel-*` + wrapper `zle-edit-*` di
+`config/zsh/.zshrc`. Widget WAJIB didaftarkan dulu lewat `zle -N` sebelum
+dirujuk di `bindkey` — tanpa itu tombol memunculkan error `No such widget`
+(gotcha nyata yang pernah kejadian). Urutan tombol xterm-style modifier
+(2=Shift 3=Alt 4=Shift+Alt 5=Ctrl 6=Ctrl+Shift), persis yang dikirim foot.
+
 ## Notifikasi (mako)
 
 Sama di ketiga compositor. Pakai `Ctrl+Super` sebab `Super+N`/`Super+D` polos

@@ -14,10 +14,15 @@ CONFIG   := $(HOME)/.config
 # menu dan autostart panel fastfetch gagal tanpa pesan error apa pun.
 DIRS := fastfetch foot fuzzel hypr mako scripts sfwbar snappy-switcher swaylock waypaper xremap
 
+# ~/.zshrc di-symlink langsung ke $HOME (zsh tak baca ~/.config) — pola sama
+# dgn rule link di bawah: file asli di-backup ke *.bak. ~/.bashrc &
+# ~/.bash_profile sengaja TIDAK di-track (mesin-specific, tetap lokal).
+ZSHRC := $(DOTFILES)/config/zsh/.zshrc
+
 .PHONY: help link unlink relink status
 
 help:
-	@echo "make link     symlink config/* -> ~/.config/ (backup dir asli ke *.bak)"
+	@echo "make link     symlink config/* -> ~/.config/ + ~/.zshrc (backup asli ke *.bak)"
 	@echo "make unlink   hapus semua symlink, restore *.bak kalau ada"
 	@echo "make relink   unlink lalu link ulang"
 	@echo "make status   tampilkan status tiap symlink"
@@ -50,6 +55,12 @@ link:
 	  ln -sfn "$$src" "$$dst"; \
 	  echo "link    $$dst -> $$src"; \
 	done
+	@zshrc="$(HOME)/.zshrc"; \
+	if [ -e "$$zshrc" ] && [ ! -L "$$zshrc" ]; then \
+	  echo "backup  $$zshrc -> $$zshrc.bak"; mv "$$zshrc" "$$zshrc.bak"; \
+	fi; \
+	ln -sfn "$(ZSHRC)" "$$zshrc"; \
+	echo "link    $$zshrc -> $(ZSHRC)"
 
 unlink:
 	@for d in $(DIRS); do \
@@ -59,6 +70,11 @@ unlink:
 	    if [ -e "$$dst.bak" ]; then mv "$$dst.bak" "$$dst"; echo "restore $$dst"; fi; \
 	  fi; \
 	done
+	@zshrc="$(HOME)/.zshrc"; \
+	if [ -L "$$zshrc" ]; then \
+	  rm "$$zshrc"; echo "remove  $$zshrc"; \
+	  if [ -e "$$zshrc.bak" ]; then mv "$$zshrc.bak" "$$zshrc"; echo "restore $$zshrc"; fi; \
+	fi
 
 relink: unlink link
 
@@ -69,3 +85,6 @@ status:
 	  elif [ -e "$$dst" ]; then printf "%-22s (dir asli, belum di-link)\n" "$$d"; \
 	  else printf "%-22s (kosong)\n" "$$d"; fi; \
 	done
+	@if [ -L "$(HOME)/.zshrc" ]; then printf "%-22s -> %s\n" ".zshrc" "$$(readlink $(HOME)/.zshrc)"; \
+	elif [ -e "$(HOME)/.zshrc" ]; then printf "%-22s (file asli, belum di-link)\n" ".zshrc"; \
+	else printf "%-22s (kosong)\n" ".zshrc"; fi
