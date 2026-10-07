@@ -132,6 +132,16 @@ git fetch upstream && git pull --rebase upstream master
 ./xbps-src pkg xdg-desktop-portal-hyprland
 sudo xbps-install --repository=hostdir/binpkgs hyprland xdg-desktop-portal-hyprland
 
+# Dialog Hyprland (ANR "aplikasi tak merespons", update-screen, dsb) butuh
+# hyprland-guiutils — tanpa ini Hyprland menampilkan banner peringatan
+# "system does not have hyprland-guiutils installed" (dicek saat start).
+# Dependensinya juga harus dibangun dulu: hyprtoolkit (makedep) dan
+# hyprland-qt-support (runtime, QML style provider).
+./xbps-src pkg hyprtoolkit
+./xbps-src pkg hyprland-qt-support
+./xbps-src pkg hyprland-guiutils
+sudo xbps-install --repository=hostdir/binpkgs hyprland-guiutils hyprland-qt-support hyprtoolkit
+
 # simpan template ke fork sendiri (commit sudah di atas, tinggal push)
 git push origin master
 ```
