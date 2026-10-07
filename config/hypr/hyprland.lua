@@ -90,16 +90,38 @@ if os.getenv("HYPR_TEST") ~= "1" then
         -- dgn xremap-gnome-bin terpasang, keduanya /usr/bin/xremap akan bentrok
         -- jadi varian build Hyprland diinstal dgn nama binary beda (lihat
         -- ~/void-packages/srcpkgs/xremap-hypr-bin/template).
+        --
+        -- Reap xremap-gnome-bin ("xremap" exact, BUKAN "xremap-hypr") yg sering
+        -- ketinggalan hidup saat ganti sesi GNOME->Hyprland tanpa logout penuh
+        -- (TTY didaur ulang di layar login, bukan sesi baru) — dua instance
+        -- xremap rebutan EVIOCGRAB atas keyboard fisik yg sama, bikin SEMUA
+        -- keybind Hyprland/remap jadi erratic walau config sehat (lihat
+        -- README/CLAUDE.md § "ganti sesi GNOME -> Hyprland di TTY yang sama").
+        -- pkill -x cocok nama proses PERSIS jadi tak pernah kena "xremap-hypr".
+        hl.exec_cmd("pkill -x xremap")
         hl.exec_cmd("xremap-hypr " .. home .. "/.config/xremap/config.yml")
-        -- path absolut: ~/.local/bin belum tentu ada di PATH sesi display manager
-        hl.exec_cmd(home .. "/.local/bin/waypaper --restore")
+        -- Path absolut /usr/bin (BUKAN ~/.local/bin — itu sisa rencana lama
+        -- sblm waypaper dipaketkan via xbps-src/python3-pep517 ke /usr/bin,
+        -- lihat CLAUDE.md §2c; ~/.local/bin/waypaper tak pernah ada di mesin
+        -- ini, jadi exec_cmd ini diam-diam gagal tiap startup — PATH sesi
+        -- display manager pun belum tentu memuat /usr/bin, jadi tetap absolut).
+        hl.exec_cmd("/usr/bin/waypaper --restore")
         hl.exec_cmd("sfwbar")                            -- menu-bar ala macOS
         hl.exec_cmd("mako")                              -- notification daemon
         hl.exec_cmd("snappy-wrapper")                    -- daemon Alt+Tab overlay;
                                                          -- wrapper menunggu socket
                                                          -- Hyprland siap dulu
         hl.exec_cmd(script .. "fastfetch-panel")         -- panel fastfetch+foto pinned
-        -- Entri XDG .desktop (nm-applet, blueman, spice-vdagent, slack).
+        -- Slack terpasang via Flatpak (com.slack.Slack), BUKAN lewat entri XDG
+        -- autostart (desktop file-nya cuma ada di /var/lib/flatpak/exports/
+        -- share/applications, itu direktori *launcher*, bukan */autostart* yg
+        -- dipindai xdg-autostart) — jadi dipanggil manual di sini, bukan lewat
+        -- script xdg-autostart di bawah. "workspace = 8 silent" = tag dispatcher
+        -- exec (bukan window_rule terpisah): window Slack langsung dikirim ke
+        -- workspace VIII begitu mapped, TANPA merebut fokus/pindah workspace
+        -- aktif saat Hyprland baru nyala.
+        hl.exec_cmd("flatpak run com.slack.Slack", { workspace = "8 silent" })
+        -- Entri XDG .desktop (nm-applet, blueman, spice-vdagent, dll).
         -- Dijalankan PALING AKHIR supaya daemon di atas hidup lebih dulu.
         hl.exec_cmd(script .. "xdg-autostart")
     end)
@@ -419,16 +441,15 @@ hl.bind(mod .. " + SHIFT + bracketright", hl.dsp.workspace.move({ monitor = "+1"
 -- --- Workspaces (8 desktop = mac Spaces) ---
 -- 9 sengaja tak dipakai — sisakan kalau butuh slot khusus.
 --
--- Pindah window ke workspace N pakai CTRL+Super (BUKAN Super+Shift) — Super+
--- Shift+3/4 sudah dipakai screenshot (baris di bawah). Di Lua, bind kedua pada
--- kombinasi tombol yg SAMA PERSIS menggantikan yg pertama (bukan error/warning),
--- jadi tabrakan ini tak kelihatan sampai diuji manual: Super+Shift+3/4 cuma
--- mengambil screenshot, window TAK pindah ke workspace 3/4 sama sekali.
--- CTRL+Super dipilih karena sudah dipakai utk "pindah workspace relatif"
--- (CTRL+Super+left/right di bawah) — satu modifier utk satu tema "pindah".
+-- Pindah window ke workspace N pakai Super+Shift. Dulu ini sempat tabrakan
+-- dgn Super+Shift+3/4 yg jadi bind screenshot (bind kedua pada kombinasi
+-- SAMA PERSIS diam-diam menggantikan yg pertama di Lua, tanpa error/warning)
+-- — makanya sempat dipindah sementara ke CTRL+Super. Sejak screenshot
+-- dibuang total ke Print-key family saja (lihat blok Screenshot di bawah),
+-- slot digit Super+Shift+1..8 sudah bebas lagi, jadi dikembalikan ke sini.
 for i = 1, 8 do
-    hl.bind(mod .. " + " .. i,                  hl.dsp.focus({ workspace = i }))
-    hl.bind("CTRL + " .. mod .. " + " .. i,     hl.dsp.window.move({ workspace = i }))
+    hl.bind(mod .. " + " .. i,             hl.dsp.focus({ workspace = i }))
+    hl.bind(mod .. " + SHIFT + " .. i,     hl.dsp.window.move({ workspace = i }))
 end
 
 -- Pindah window ke workspace sebelah

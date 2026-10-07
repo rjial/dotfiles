@@ -450,9 +450,22 @@ Diagnosa: `grep -c 'Name="xremap' /proc/bus/input/devices` — kalau hasilnya
 `pgrep -af xremap` (cek config yg dibaca tiap PID — `gnome-macos-remap` vs
 `xremap/config.yml` jadi penanda sesi mana yg basi).
 
-Perbaikan: `kill <PID xremap sesi lama>` — device virtualnya ikut hilang
-otomatis begitu prosesnya mati, tak perlu langkah lain. Keybind pulih
-seketika setelah itu, tanpa restart Hyprland.
+Perbaikan manual (kalau belum reload config/belum restart Hyprland):
+`kill <PID xremap sesi lama>` — device virtualnya ikut hilang otomatis begitu
+prosesnya mati, tak perlu langkah lain. Keybind pulih seketika setelah itu,
+tanpa restart Hyprland.
+
+**Sudah diotomatiskan** (kejadian berulang terlalu sering utk ditangani
+manual tiap kali): `config/hypr/hyprland.lua` sekarang menjalankan
+`pkill -x xremap` di `hyprland.start`, TEPAT SEBELUM menyalakan
+`xremap-hypr`. `pkill -x` cocok nama proses PERSIS ("xremap"), jadi tak
+pernah ikut membunuh `xremap-hypr` sendiri (nama binary beda, lihat §2b).
+Konsekuensi: proses GNOME `xremap` yg nyangkut otomatis direap setiap kali
+sesi Hyprland start — baik lewat boot/login baru maupun switch sesi di
+layar login yang mendaur-ulang TTY. Kalau gejala ini muncul lagi SETELAH
+perbaikan ini (keybind erratic pasca restart), curigai xremap-gnome-bin
+start ULANG setelah `hyprland.start` jalan (race lintas-DM), bukan gagal
+reap — cek `pgrep -af xremap` dulu sebelum asumsi fix-nya rusak.
 
 ## Gotcha nyata: Super+Shift+3/4 bentrok dgn "pindah window ke workspace 3/4"
 
