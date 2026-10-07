@@ -40,6 +40,12 @@ compinit
 # (panah polos, Enter, dsb) membatalkan seleksi.
 # Urutan tombol xterm-style modifier (2=Shift 3=Alt 4=Shift+Alt 5=Ctrl
 # 6=Ctrl+Shift) — persis yang dikirim foot utk panah/Home/End.
+
+# Mode editing vim penuh: i/a/o = insert, Esc = normal (vicmd), operator vim
+# (d/c/y/p/x, 0/$/w/b, dd, cw, ...) berlaku di normal mode. Konsekuensinya
+# binding emacs bawaan (Ctrl+A/E/U dsb) hilang — pakai padanan vim-nya.
+bindkey -v
+
 typeset -g ZLE_SEL=
 
 function zle-sel-begin  { [[ -n $ZLE_SEL ]] || ZLE_SEL=$CURSOR }
@@ -109,29 +115,87 @@ for zle_w in quoted-insert backward-char forward-char backward-word forward-word
              beginning-of-line end-of-line beginning-of-buffer-or-history \
              end-of-buffer-or-history accept-line kill-line backward-kill-line \
              up-line-or-history down-line-or-history yank yank-pop undo \
-             kill-region copy-region-as-kill; do
+             kill-region copy-region-as-kill \
+             vi-cmd-mode vi-insert vi-insert-bol vi-delete vi-delete-char \
+             vi-change vi-change-eol vi-yank vi-put-after vi-put-before \
+             vi-replace; do
   zle -A "$zle_w" "zle-builtin-$zle_w" 2>/dev/null || continue
   eval "function zle-edit-$zle_w() { zle-sel-clear; zle zle-builtin-$zle_w }"
   zle -N "$zle_w" "zle-edit-$zle_w"
 done
 unset zle_w
 
-bindkey '^[[1;3D' backward-word                  # Alt+Left   lompat kata (Option+←)
-bindkey '^[[1;3C' forward-word                   # Alt+Right  (Option+→)
-bindkey '^[[1;5D' beginning-of-line              # Ctrl+Left  awal baris (pengganti Cmd+←)
-bindkey '^[[1;5C' end-of-line                    # Ctrl+Right akhir baris
-bindkey '^[[1;5A' beginning-of-buffer-or-history # Ctrl+Up    awal buffer (pengganti Cmd+↑)
-bindkey '^[[1;5B' end-of-buffer-or-history       # Ctrl+Down  akhir buffer
-bindkey '^[[1;2D' zle-sel-backward-char          # Shift+Left  seleksi per karakter
-bindkey '^[[1;2C' zle-sel-forward-char           # Shift+Right
-bindkey '^[[1;4D' zle-sel-backward-word          # Shift+Alt+Left  seleksi per kata
-bindkey '^[[1;4C' zle-sel-forward-word           # Shift+Alt+Right
-bindkey '^[[1;6D' zle-sel-bol                    # Shift+Ctrl+Left  seleksi ke awal baris
-bindkey '^[[1;6C' zle-sel-eol                    # Shift+Ctrl+Right seleksi ke akhir baris
-bindkey '^[[1;6A' zle-sel-buf-bol                # Shift+Ctrl+Up    seleksi ke awal buffer
-bindkey '^[[1;6B' zle-sel-buf-eol                # Shift+Ctrl+Down  seleksi ke akhir buffer
-bindkey '^[[1;2H' zle-sel-bol                    # Shift+Home
-bindkey '^[[1;2F' zle-sel-eol                    # Shift+End
+# keymap macOS-like — dipasang di insert mode (viins) DAN normal mode (vicmd);
+# bare `bindkey` setelah `bindkey -v` hanya mengikat ke viins.
+for zle_km in viins vicmd; do
+  bindkey -M "$zle_km" '^[[1;3D' backward-word                  # Alt+Left   lompat kata (Option+←)
+  bindkey -M "$zle_km" '^[[1;3C' forward-word                   # Alt+Right  (Option+→)
+  bindkey -M "$zle_km" '^[[1;5D' beginning-of-line              # Ctrl+Left  awal baris (pengganti Cmd+←)
+  bindkey -M "$zle_km" '^[[1;5C' end-of-line                    # Ctrl+Right akhir baris
+  bindkey -M "$zle_km" '^[[1;5A' beginning-of-buffer-or-history # Ctrl+Up    awal buffer (pengganti Cmd+↑)
+  bindkey -M "$zle_km" '^[[1;5B' end-of-buffer-or-history       # Ctrl+Down  akhir buffer
+  bindkey -M "$zle_km" '^[[1;2D' zle-sel-backward-char          # Shift+Left  seleksi per karakter
+  bindkey -M "$zle_km" '^[[1;2C' zle-sel-forward-char           # Shift+Right
+  bindkey -M "$zle_km" '^[[1;4D' zle-sel-backward-word          # Shift+Alt+Left  seleksi per kata
+  bindkey -M "$zle_km" '^[[1;4C' zle-sel-forward-word           # Shift+Alt+Right
+  bindkey -M "$zle_km" '^[[1;6D' zle-sel-bol                    # Shift+Ctrl+Left  seleksi ke awal baris
+  bindkey -M "$zle_km" '^[[1;6C' zle-sel-eol                    # Shift+Ctrl+Right seleksi ke akhir baris
+  bindkey -M "$zle_km" '^[[1;6A' zle-sel-buf-bol                # Shift+Ctrl+Up    seleksi ke awal buffer
+  bindkey -M "$zle_km" '^[[1;6B' zle-sel-buf-eol                # Shift+Ctrl+Down  seleksi ke akhir buffer
+  bindkey -M "$zle_km" '^[[1;2H' zle-sel-bol                    # Shift+Home
+  bindkey -M "$zle_km" '^[[1;2F' zle-sel-eol                    # Shift+End
+done
+unset zle_km
+
+# --- Prompt kanan (RPROMPT): info project + indikator mode vi ----------------
+# Bagian dinamis (dihitung tiap prompt lewat precmd):
+#   - branch git + tanda `*` kalau ada perubahan belum ter-commit (kotor)
+#   - versi node.js (vX.Y.Z) hanya di dalam project Node.js, yaitu ada
+#     package.json di direktori ini atau salah satu direktori induknya
+# Bagian statis: indikator mode INSERT/NORMAL/VISUAL, diperbarui oleh
+# zle-keymap-select (widget itu dipanggil zsh otomatis tiap keymap berganti:
+# Esc, i, v, ...). zle reset-prompt = prompt tergambar ulang seketika.
+typeset -g ZLE_MODE_IND='%F{blue}-- INSERT --%f'  # default saat shell mulai = insert
+typeset -g ZLE_RPROMPT_INFO=
+typeset -g ZLE_NODE_VER=                         # cache — node jarang berganti
+typeset -g RPROMPT=$ZLE_MODE_IND
+
+function zsh-rprompt-info {
+  local info= dir=$PWD
+  # git: branch (detached HEAD -> short SHA) + tanda * kalau kotor
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    local branch
+    branch=$(git symbolic-ref --short HEAD 2>/dev/null) \
+      || branch=$(git rev-parse --short HEAD 2>/dev/null)
+    [[ -n $(git status --porcelain 2>/dev/null) ]] && branch+='*'
+    info="%F{cyan}${branch}%f"
+  fi
+  # node: cari package.json dari PWD ke atas (subdir monorepo ikut terdeteksi)
+  while [[ $dir != / ]]; do
+    if [[ -f $dir/package.json ]]; then
+      [[ -n $ZLE_NODE_VER ]] || ZLE_NODE_VER=$(node -v 2>/dev/null)
+      info+="${info:+ }%F{green}${ZLE_NODE_VER}%f"
+      break
+    fi
+    dir=${dir:h}
+  done
+  ZLE_RPROMPT_INFO=$info
+  RPROMPT="$ZLE_RPROMPT_INFO${ZLE_RPROMPT_INFO:+ }$ZLE_MODE_IND"
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd zsh-rprompt-info
+
+function zle-keymap-select {
+  case $KEYMAP in
+    vicmd)       ZLE_MODE_IND='%F{yellow}-- NORMAL --%f' ;;
+    vivis|vivli) ZLE_MODE_IND='%F{magenta}-- VISUAL --%f' ;;
+    *)           ZLE_MODE_IND='%F{blue}-- INSERT --%f' ;;
+  esac
+  RPROMPT="$ZLE_RPROMPT_INFO${ZLE_RPROMPT_INFO:+ }$ZLE_MODE_IND"
+  zle reset-prompt
+}
+zle -N zle-keymap-select
 
 # zsh-autosuggestions + zsh-syntax-highlighting (paket Void) — keduanya sekadar
 # skrip yang di-source, bukan plugin manager. Void memasangnya di

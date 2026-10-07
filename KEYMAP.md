@@ -325,6 +325,30 @@ dirujuk di `bindkey` — tanpa itu tombol memunculkan error `No such widget`
 (gotcha nyata yang pernah kejadian). Urutan tombol xterm-style modifier
 (2=Shift 3=Alt 4=Shift+Alt 5=Ctrl 6=Ctrl+Shift), persis yang dikirim foot.
 
+## Mode vi (zsh) — editing vim penuh
+
+`bindkey -v` — baris perintah zsh bermodal vim:
+
+| Tombol | Fungsi |
+|---|---|
+| `Esc` | Normal mode (vicmd) — operator vim: `d/c/y/p/x`, `0/$/w/b`, `dd`, `cw`, … |
+| `i` / `a` / `o` | Kembali ke insert mode |
+| `d`/`c`/`y` + `w`/`b`/`0`/`$` | Hapus/ubah/yank per kata/awal/akhir baris |
+| `x` | Hapus karakter di kursor |
+| `p` / `P` | Tempel setelah / sebelum |
+
+Indikator mode tampil di prompt kanan (`RPROMPT`): `-- INSERT --` (biru),
+`-- NORMAL --` (kuning), `-- VISUAL --` (magenta, saat `v`/`V` di normal mode) —
+diperbarui otomatis lewat widget `zle-keymap-select`. Prompt kanan yang sama
+juga memuat info project (dihitung tiap prompt lewat `precmd`): branch git +
+tanda `*` kalau ada perubahan belum ter-commit, dan versi node.js saat berada
+di dalam project Node.js (ada `package.json` di direktori ini/induknya).
+
+Konsekuensi: binding emacs bawaan (`Ctrl+A`/`Ctrl+E`/`Ctrl+U`, dsb) hilang —
+pakai padanan vim-nya (`0`/`$`/`dd`…). Keymap macOS-like di atas tetap aktif di
+insert maupun normal mode (dipasang di `viins` **dan** `vicmd` — bare `bindkey`
+setelah `bindkey -v` hanya mengikat ke `viins`). Tab completion tetap jalan.
+
 ## Notifikasi (mako)
 
 Sama di ketiga compositor. Pakai `Ctrl+Super` sebab `Super+N`/`Super+D` polos

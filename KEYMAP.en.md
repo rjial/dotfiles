@@ -332,6 +332,31 @@ referenced by `bindkey` — otherwise the keys raise `No such widget` (a real
 gotcha that happened here). Keys use xterm-style modifier numbering
 (2=Shift 3=Alt 4=Shift+Alt 5=Ctrl 6=Ctrl+Shift), exactly what foot sends.
 
+## Vi mode (zsh) — full vim editing
+
+`bindkey -v` — the zsh command line is vim-modal:
+
+| Key | Function |
+|---|---|
+| `Esc` | Normal mode (vicmd) — vim operators: `d/c/y/p/x`, `0/$/w/b`, `dd`, `cw`, … |
+| `i` / `a` / `o` | Back to insert mode |
+| `d`/`c`/`y` + `w`/`b`/`0`/`$` | Delete/change/yank per word/start/end of line |
+| `x` | Delete char under cursor |
+| `p` / `P` | Paste after / before |
+
+Mode indicator shows on the right prompt (`RPROMPT`): `-- INSERT --` (blue),
+`-- NORMAL --` (yellow), `-- VISUAL --` (magenta, on `v`/`V` in normal mode) —
+updated automatically via the `zle-keymap-select` widget. The same right
+prompt also carries project info (recomputed every prompt via `precmd`): git
+branch + `*` when there are uncommitted changes, and the node.js version when
+inside a Node.js project (a `package.json` in this dir or a parent).
+
+Consequence: default emacs bindings (`Ctrl+A`/`Ctrl+E`/`Ctrl+U`, etc.) are
+gone — use their vim equivalents (`0`/`$`/`dd`…). The macOS-like keymap above
+stays active in both insert and normal mode (installed into `viins` **and**
+`vicmd` — bare `bindkey` after `bindkey -v` only binds into `viins`). Tab
+completion keeps working.
+
 ## Notifications (mako)
 
 Same on all three compositors. Uses `Ctrl+Super` because bare `Super+N`/`Super+D`
