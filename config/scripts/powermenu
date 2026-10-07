@@ -82,13 +82,15 @@ case $sel in
 *Suspend)
 	# Lock dulu supaya layar terkunci saat bangun. `swaylock -f` daemonize,
 	# jadi ia kembali langsung dan suspend tetap jalan.
-	lock && systemctl suspend
+	# `loginctl`, BUKAN `systemctl` — Void pakai elogind, `systemctl` tak ada
+	# (command not found diam-diam). loginctl = D-Bus logind, sama API-nya.
+	lock && loginctl suspend
 	;;
 *Reboot)
-	confirm '󰜉  Reboot' 'Reboot sekarang?' && systemctl reboot
+	confirm '󰜉  Reboot' 'Reboot sekarang?' && loginctl reboot
 	;;
 *'Shut Down')
-	confirm '󰐥  Shut Down' 'Matikan mesin?' && systemctl poweroff
+	confirm '󰐥  Shut Down' 'Matikan mesin?' && loginctl poweroff
 	;;
 *)
 	# Esc / pilihan kosong — tak melakukan apa pun.
