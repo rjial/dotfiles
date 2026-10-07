@@ -75,6 +75,11 @@ hl.env("XDG_SESSION_TYPE", "wayland")
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 -- JetBrains/Java di XWayland
 hl.env("_JAVA_AWT_WM_NONREPARENTING", "1")
+-- GNOME Keyring SSH agent. Socket-nya deterministik
+-- ($XDG_RUNTIME_DIR/keyring/ssh — terverifikasi: `gnome-keyring-daemon --start
+-- --components=ssh` → SSH_AUTH_SOCK=/run/user/1000/keyring/ssh), jadi bisa
+-- di-set statis di sini tanpa menangkap output daemon.
+hl.env("SSH_AUTH_SOCK", os.getenv("XDG_RUNTIME_DIR") .. "/keyring/ssh")
 
 ---------------------------------------------------------------- autostart
 -- Guard HYPR_TEST: instance Hyprland bersarang (dipakai untuk menguji config ini
@@ -86,6 +91,11 @@ if os.getenv("HYPR_TEST") ~= "1" then
         -- Polkit agent. Verifikasi path binary di mesin Void — path ini lokasi
         -- paling umum lintas distro untuk paket polkit-gnome, bukan jaminan.
         hl.exec_cmd("/usr/libexec/polkit-gnome-authentication-agent-1")
+        -- GNOME Keyring: PAM GDM (pam_gnome_keyring.so auto_start) sudah
+        -- menjalankan daemon --login + unlock keyring dgn password login.
+        -- --start cukup memastikan komponen ssh aktif — idempoten (menemukan
+        -- daemon lama: "discover_other_daemon"), aman dipanggil tiap start.
+        hl.exec_cmd("gnome-keyring-daemon --start --components=ssh,secrets")
         -- "xremap-hypr", BUKAN "xremap" polos: mesin ini juga punya sesi GNOME
         -- dgn xremap-gnome-bin terpasang, keduanya /usr/bin/xremap akan bentrok
         -- jadi varian build Hyprland diinstal dgn nama binary beda (lihat
