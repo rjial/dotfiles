@@ -37,5 +37,9 @@ liveinst-setup
 # --- Lain-lain ---------------------------------------------------------------
 com.cloudflare.WarpTaskbar   # Cloudflare WARP tray, tak dipakai
 imsettings-start             # input method switcher; layout us tanpa IME
+lxpolkit                     # agent polkit kedua — hyprland.lua sudah menjalankan
+                             # polkit-gnome-authentication-agent-1; dua agent utk
+                             # subject sama = error "An authentication agent
+                             # already exists for the given subject"
 sealertauto                  # SELinux troubleshooter tray; denial tetap ke journal
 remmina-applet               # entri user; buka Remmina manual saat perlu
