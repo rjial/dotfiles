@@ -111,7 +111,6 @@ if os.getenv("HYPR_TEST") ~= "1" then
         hl.exec_cmd("snappy-wrapper")                    -- daemon Alt+Tab overlay;
                                                          -- wrapper menunggu socket
                                                          -- Hyprland siap dulu
-        hl.exec_cmd(script .. "fastfetch-panel")         -- panel fastfetch+foto pinned
         -- Slack terpasang via Flatpak (com.slack.Slack), BUKAN lewat entri XDG
         -- autostart (desktop file-nya cuma ada di /var/lib/flatpak/exports/
         -- share/applications, itu direktori *launcher*, bukan */autostart* yg
