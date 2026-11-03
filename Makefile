@@ -12,7 +12,7 @@ CONFIG   := $(HOME)/.config
 # `scripts` = powermenu + osd + fastfetch-panel. Dipanggil lewat path absolut
 # ~/.config/scripts/..., jadi symlink-nya WAJIB ada — tanpa itu keybind power
 # menu dan autostart panel fastfetch gagal tanpa pesan error apa pun.
-DIRS := fastfetch foot fuzzel hypr mako scripts sfwbar snappy-switcher swaylock waypaper xremap
+DIRS := fastfetch foot fuzzel hypr mako nvim scripts sfwbar snappy-switcher swaylock waypaper xremap
 
 # ~/.zshrc di-symlink langsung ke $HOME (zsh tak baca ~/.config) — pola sama
 # dgn rule link di bawah: file asli di-backup ke *.bak. ~/.bashrc &
