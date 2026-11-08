@@ -186,7 +186,7 @@ Semua di satu file `config/hypr/hyprland.lua`, **auto-reload saat disimpan**.
 | `Super+Down` | Toggle floating |
 | `Super+Left` / `Super+Right` | Pindah fokus kiri / kanan |
 | `Alt+Tab` / `Alt+Shift+Tab` | Switcher overlay snappy-switcher — semua window, urut MRU |
-| `Super+Tab` / `Super+Shift+Tab` | Switcher overlay — hanya window di workspace aktif |
+| `Super+Tab` / `Super+Shift+Tab` | Switcher overlay — semua window lintas workspace (sama dengan `Alt+Tab`) |
 | `Super+` `` ` `` | Window berikutnya (cyclenext) — fallback tanpa overlay |
 | `Super+M` / `Super+H` | "Minimize" → parkir ke workspace `special:minimized` |
 | `Super+Shift+M` | Tampilkan/sembunyikan workspace `special:minimized` |
@@ -229,6 +229,15 @@ Semua di satu file `config/hypr/hyprland.lua`, **auto-reload saat disimpan**.
 | `Super+drag kanan` | Resize window |
 | `Super+klik tengah` | Toggle floating |
 | drag tepi window | Resize (`resize_on_border`, tanpa modifier) |
+| klik-kiri item taskbar sfwbar | Fokus/raise window |
+| klik-kanan item taskbar sfwbar | Menu Focus / Close / (un)minimize |
+
+> **Kontrol window dari taskbar** (fokus/close/minimize) dikirim lewat protokol
+> `wlr-foreign-toplevel`, bukan IPC Hyprland — sfwbar dijalankan tanpa
+> `HYPRLAND_INSTANCE_SIGNATURE` supaya memakai backend itu. Backend IPC akan
+> mengirim `dispatch focuswindow address:0x…` yang di-parse config Lua sebagai
+> Lua → syntax error → klik diam-diam tak berefek. Detail di `CLAUDE.md` &
+> `config/sfwbar/sfwbar.config`.
 
 Screenshot & media key Hyprland: khusus **`Print` key family saja** (BUKAN
 `Super+Shift+3/4` — sengaja dibuang, lihat gotcha di `CLAUDE.md`), `XF86Audio*`,

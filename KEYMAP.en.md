@@ -191,7 +191,7 @@ changed. Everything lives in one file, `config/hypr/hyprland.lua`, which
 | `Super+Down` | Toggle floating |
 | `Super+Left` / `Super+Right` | Move focus left / right |
 | `Alt+Tab` / `Alt+Shift+Tab` | snappy-switcher overlay — all windows, MRU order |
-| `Super+Tab` / `Super+Shift+Tab` | Overlay — current workspace only |
+| `Super+Tab` / `Super+Shift+Tab` | Overlay — all windows across workspaces (same as `Alt+Tab`) |
 | `Super+` `` ` `` | Next window (cyclenext) — no-overlay fallback |
 | `Super+M` / `Super+H` | "Minimize" → park on the `special:minimized` workspace |
 | `Super+Shift+M` | Show/hide the `special:minimized` workspace |
@@ -234,6 +234,15 @@ changed. Everything lives in one file, `config/hypr/hyprland.lua`, which
 | `Super+right-drag` | Resize window |
 | `Super+middle-click` | Toggle floating |
 | drag a window edge | Resize (`resize_on_border`, no modifier) |
+| left-click an sfwbar taskbar item | Focus/raise window |
+| right-click an sfwbar taskbar item | Menu: Focus / Close / (un)minimize |
+
+> **Taskbar window controls** (focus/close/minimize) go through the
+> `wlr-foreign-toplevel` protocol, not Hyprland IPC — sfwbar runs without
+> `HYPRLAND_INSTANCE_SIGNATURE` so it uses that backend. The IPC backend would
+> send `dispatch focuswindow address:0x…`, which the Lua config parses as Lua →
+> syntax error → clicks silently do nothing. See `CLAUDE.md` &
+> `config/sfwbar/sfwbar.config`.
 
 Screenshots on Hyprland use the **`Print` key family only** (NOT
 `Super+Shift+3/4` — deliberately removed, see the gotcha in `CLAUDE.md`).
