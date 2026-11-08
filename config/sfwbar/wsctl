@@ -35,6 +35,32 @@ def emit(ws, last=[None]):
     print(json.dumps({"ws": ws}), flush=True)
 
 
+def ensure_signature():
+    """Pastikan HYPRLAND_INSTANCE_SIGNATURE ada di environ.
+
+    sfwbar sengaja dijalankan TANPA env ini (lihat autostart hyprland.lua) supaya
+    memakai backend wlr-foreign-toplevel — tapi wsctl (anak sfwbar) MEWARISI
+    environ itu, jadi env-nya pun kosong. hyprctl & path socket butuh signature,
+    jadi pulihkan dari nama direktori instance di $XDG_RUNTIME_DIR/hypr (atau
+    /tmp/hypr): tiap instance Hyprland bikin satu subdir bernama signature-nya.
+    Kalau ada >1 instance, ambigu — pilih yang paling baru diubah. Lalu set
+    kembali ke os.environ supaya subprocess hyprctl mewarisinya.
+    """
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    for base in (os.path.join(runtime, "hypr"), "/tmp/hypr"):
+        if not os.path.isdir(base):
+            continue
+        subs = [d for d in os.listdir(base)
+                if os.path.isdir(os.path.join(base, d))]
+        if not subs:
+            continue
+        subs.sort(key=lambda d: os.path.getmtime(os.path.join(base, d)))
+        os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = subs[-1]
+        return
+
+
 def hypr_socket_dir():
     his = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
     if not his:
@@ -102,6 +128,7 @@ def hypr_set(ws):
 def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
+    ensure_signature()
     cmd = sys.argv[1]
 
     if cmd == "watch":

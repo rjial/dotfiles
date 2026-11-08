@@ -116,11 +116,24 @@ if os.getenv("HYPR_TEST") ~= "1" then
         -- ini, jadi exec_cmd ini diam-diam gagal tiap startup — PATH sesi
         -- display manager pun belum tentu memuat /usr/bin, jadi tetap absolut).
         hl.exec_cmd("/usr/bin/waypaper --restore")
-        hl.exec_cmd("sfwbar")                            -- menu-bar ala macOS
+        -- `env -u HYPRLAND_INSTANCE_SIGNATURE`: paksa sfwbar pakai backend
+        -- wlr-foreign-toplevel, BUKAN backend IPC Hyprland. Dgn backend IPC,
+        -- action taskbar Focus/Close mengirim `dispatch focuswindow
+        -- address:0x…` yg oleh config Lua ini di-parse sbg Lua → syntax error
+        -- → klik taskbar diam-diam tak berefek. Backend foreign-toplevel kirim
+        -- request protokol yg dihormati Hyprland (klik fokus jalan). Trade-off
+        -- terkait: action Exec sfwbar jadi fork langsung (tanpa `[[…]]`) —
+        -- lihat config/sfwbar/sfwbar.config. wsctl (highlight workspace) tetap
+        -- pakai IPC Hyprland langsung, tak terpengaruh backend sfwbar.
+        hl.exec_cmd("env -u HYPRLAND_INSTANCE_SIGNATURE sfwbar")  -- menu-bar ala macOS
         hl.exec_cmd("mako")                              -- notification daemon
-        hl.exec_cmd("snappy-wrapper")                    -- daemon Alt+Tab overlay;
-                                                         -- wrapper menunggu socket
-                                                         -- Hyprland siap dulu
+        -- SNAPPY_BINARY WAJIB di-set: snappy-wrapper default-nya mencari
+        -- /usr/local/bin/snappy-switcher (konvensi `make install` upstream),
+        -- tapi paket xbps memasang biner ke /usr/bin (PREFIX=/usr, lihat
+        -- CLAUDE.md §2c). Tanpa override ini wrapper gagal start daemon di
+        -- login ("No such file or directory"), retry 30x, lalu menyerah —
+        -- Alt+Tab overlay mati diam-diam. wrapper menunggu socket Hyprland siap.
+        hl.exec_cmd("env SNAPPY_BINARY=/usr/bin/snappy-switcher snappy-wrapper")
         -- Monitor baterai: toast kritis (mako) saat level <= 15% & discharging.
         -- Mode daemon loop internal (poll 60s), bukan timer eksternal — satu
         -- proses, ter-track. Diam otomatis di mesin tanpa BAT0.
@@ -400,9 +413,9 @@ hl.bind(mod .. " + right", hl.dsp.focus({ direction = "right" }))
 -- modifier = dia tak pernah lihat tombolnya ditahan).
 hl.bind("ALT + Tab",         hl.dsp.exec_cmd("snappy-switcher next --mod alt"))
 hl.bind("ALT + SHIFT + Tab", hl.dsp.exec_cmd("snappy-switcher prev --mod alt"))
--- Super+Tab = hanya window di workspace aktif.
-hl.bind(mod .. " + Tab",         hl.dsp.exec_cmd("snappy-switcher next --workspace --mod super"))
-hl.bind(mod .. " + SHIFT + Tab", hl.dsp.exec_cmd("snappy-switcher prev --workspace --mod super"))
+-- Super+Tab = semua window lintas workspace (sama dgn Alt+Tab, beda modifier).
+hl.bind(mod .. " + Tab",         hl.dsp.exec_cmd("snappy-switcher next --mod super"))
+hl.bind(mod .. " + SHIFT + Tab", hl.dsp.exec_cmd("snappy-switcher prev --mod super"))
 -- Fallback tanpa GUI (kalau daemon mati). Dua aksi dalam satu bind: di format
 -- .conf ini dua baris `bind` bertumpuk pada tombol yang sama; di Lua bind kedua
 -- MENGGANTI yang pertama, jadi harus digabung dalam satu fungsi.

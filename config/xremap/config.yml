@@ -15,8 +15,9 @@ keymap:
       Super-v: Ctrl-Shift-v      # paste
       Super-x: Ctrl-Shift-x
       Super-f: Ctrl-Shift-f      # search (foot)
-      Super-Tab: Ctrl-Tab              # buffer switcher overlay in nvim (cybu)
-      Super-Shift-Tab: Ctrl-Shift-Tab  # reverse. Only in foot; global Super+Tab stays Hyprland window switcher
+      # Super-Tab SENGAJA tak di-remap di foot — biar tembus ke Hyprland window
+      # switcher (snappy-switcher) di foot juga, sama spt app lain. Konsekuensi:
+      # nvim cybu tak bisa pakai Super+Tab di foot, pakai Ctrl+Tab langsung.
 
   - name: Global Cmd -> Ctrl (GUI app shortcuts)
     remap:
