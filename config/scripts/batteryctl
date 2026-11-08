@@ -1,0 +1,84 @@
+#!/bin/sh
+# batteryctl — monitor baterai, notifikasi (mako) saat level rendah.
+#
+# usage: batteryctl [daemon]
+#   daemon  : loop poll tiap INTERVAL detik (dipakai autostart hyprland.lua).
+#   (kosong): cek sekali lalu keluar — buat uji manual.
+#
+# Dipanggil dari blok autostart hyprland.lua sebagai `batteryctl daemon`.
+# Notifikasi lewat notify-send/mako (toast biasa, BUKAN OSD — ini peringatan
+# persisten, bukan indikator sesaat).
+#
+# KENAPA PAKAI FLAG (warned), BUKAN KIRIM TIAP POLL:
+# tanpa state, tiap siklus poll (INTERVAL detik) di bawah ambang akan memunculkan
+# toast baru — spam. Flag `warned` memastikan notifikasi dikirim SEKALI saat
+# turun melewati ambang; di-reset begitu baterai mengisi (Charging) atau naik
+# kembali di atas ambang, jadi peringatan berikutnya tetap muncul di siklus
+# discharge selanjutnya.
+#
+# KENAPA urgency=critical:
+# blok [urgency=critical] di config/mako/config mematikan auto-timeout — toast
+# baterai lemah menetap sampai di-dismiss manual, tak hilang sendiri setelah 5s.
+
+set -u
+
+THRESHOLD=15        # persen; di bawah ATAU sama = peringatan
+INTERVAL=60         # detik antar poll (mode daemon)
+
+GLYPH='󰂃'           # battery-alert, Symbols Nerd Font (pola sama volumectl)
+
+# Nama device baterai beda per laptop (BAT0/BAT1/macsmc-battery/CMB0, dll) —
+# JANGAN hardcode BAT0. Pilih device pertama yg `type`-nya "Battery" (bukan
+# "Mains"/UPS). `$BAT` ditentukan sekali di sini; kalau tak ada baterai sama
+# sekali (mis. desktop) tetap kosong dan check() diam.
+find_battery() {
+	for d in /sys/class/power_supply/*; do
+		[ -r "$d/type" ] || continue
+		[ "$(cat "$d/type")" = Battery ] || continue
+		echo "$d"
+		return 0
+	done
+}
+BAT=$(find_battery)
+
+warned=0
+
+check() {
+	# Baterai mungkin tak ada (desktop, atau device lepas) — diam saja.
+	[ -n "$BAT" ]          || return 0
+	[ -r "$BAT/capacity" ] || return 0
+	[ -r "$BAT/status" ]   || return 0
+
+	cap=$(cat "$BAT/capacity")
+	status=$(cat "$BAT/status")
+
+	# Reset flag begitu tak lagi discharging ATAU sudah naik di atas ambang,
+	# supaya siklus discharge berikutnya bisa memperingatkan lagi.
+	if [ "$status" != "Discharging" ] || [ "$cap" -gt "$THRESHOLD" ]; then
+		warned=0
+		return 0
+	fi
+
+	# Di sini: Discharging DAN cap <= THRESHOLD.
+	if [ "$warned" = 0 ]; then
+		notify-send \
+			-a batteryctl \
+			-u critical \
+			-h "string:x-canonical-private-synchronous:battery-low" \
+			"$GLYPH  Baterai lemah" \
+			"Tersisa ${cap}% — colok charger."
+		warned=1
+	fi
+}
+
+case "${1:-}" in
+daemon)
+	while :; do
+		check
+		sleep "$INTERVAL"
+	done
+	;;
+*)
+	check
+	;;
+esac

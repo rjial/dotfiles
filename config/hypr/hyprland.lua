@@ -121,6 +121,10 @@ if os.getenv("HYPR_TEST") ~= "1" then
         hl.exec_cmd("snappy-wrapper")                    -- daemon Alt+Tab overlay;
                                                          -- wrapper menunggu socket
                                                          -- Hyprland siap dulu
+        -- Monitor baterai: toast kritis (mako) saat level <= 15% & discharging.
+        -- Mode daemon loop internal (poll 60s), bukan timer eksternal — satu
+        -- proses, ter-track. Diam otomatis di mesin tanpa BAT0.
+        hl.exec_cmd(script .. "batteryctl daemon")
         -- Slack terpasang via Flatpak (com.slack.Slack), BUKAN lewat entri XDG
         -- autostart (desktop file-nya cuma ada di /var/lib/flatpak/exports/
         -- share/applications, itu direktori *launcher*, bukan */autostart* yg
